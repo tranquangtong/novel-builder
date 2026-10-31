@@ -1,5 +1,9 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { proposalHref } from "@/lib/client/links";
+import type { PullSummary } from "@/lib/domain/types";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/client/api";
@@ -33,6 +37,13 @@ export default function ConnectPage() {
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [busy, setBusy] = useState(false);
   const notInit = (project.error as { code?: string } | null)?.code === "not_initialized";
+  // Cấu trúc bản thảo có thể đang nằm trong một đề xuất chưa nhập (ví dụ đề xuất nhập từ Google Docs).
+  const pendingInit = useQuery({
+    queryKey: ["proposals", "open", "init"],
+    enabled: notInit,
+    queryFn: () => api<{ pulls: PullSummary[] }>("/api/proposals?state=open"),
+    select: (d) => d.pulls.filter((p) => p.files.some((f) => f.path === "content/project.json" && f.status === "added")),
+  });
 
   const diagnose = async () => {
     const r = await api<{ steps: Step[] }>("/api/status/diagnose", { body: {} });
@@ -95,7 +106,20 @@ export default function ConnectPage() {
               }}>Tạo lại dữ liệu demo</button>}
               <button className="btn ghost" onClick={() => { clearConnection(); setSteps(null); }}>Ngắt kết nối</button>
             </div>
-            {notInit && conn.mode === "github" && (
+            {notInit && conn.mode === "github" && (pendingInit.data?.length ?? 0) > 0 && (
+              <div className="banner info" style={{ marginTop: 12 }} data-testid="pending-init">
+                <div className="b-body">
+                  <div className="b-title">Cấu trúc bản thảo đang nằm trong một đề xuất chưa nhập</div>
+                  <div className="small">Nhánh chính còn trống. Hãy mở đề xuất bên dưới, xem trước và bấm “Chấp nhận toàn bộ & nhập vào bản chính”. Đừng bấm Khởi tạo cấu trúc — sẽ xung đột với đề xuất này.</div>
+                  <div className="b-actions">
+                    {pendingInit.data!.map((p) => (
+                      <Link key={p.number} className="btn sm primary" href={proposalHref(p.number)}>Mở đề xuất #{p.number}: {p.title}</Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {notInit && conn.mode === "github" && !pendingInit.isLoading && (pendingInit.data?.length ?? 0) === 0 && (
               <div className="banner warn" style={{ marginTop: 12 }}>
                 <div className="b-body">
                   <div className="b-title">Repo chưa có cấu trúc bản thảo</div>

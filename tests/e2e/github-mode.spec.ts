@@ -130,3 +130,27 @@ test("trang dưới basePath /novel-builder hoạt động khi vào thẳng URL 
   await page.goto(`${B}/history/`);
   await expect(page.getByTestId("commit-list").locator(".list-item").first()).toBeVisible();
 });
+
+test("repo mới: cấu trúc nằm trong đề xuất chưa nhập → trang dẫn tới đề xuất, nhập được, không gợi ý khởi tạo", async ({ page }) => {
+  const { git, fake } = await setup(page);
+  // Dựng lại tình huống thật: main chỉ có README; toàn bộ cấu trúc nằm trên nhánh của đề xuất #1.
+  const seeded = await git.readState();
+  const full = await git.readCommit(seeded.refs.main);
+  const readme = await git.writeCommit({ tree: { "README.md": await git.writeBlob("# manuscript\n") }, parents: [], message: "Initial commit", author: "tranquangtong", date: "2026-10-31T00:00:00Z" });
+  const branch = await git.writeCommit({ tree: { ...full.tree, "README.md": await git.writeBlob("# manuscript\n") }, parents: [readme.sha], message: "Nhập bản thảo", author: "claude", date: "2026-10-31T00:01:00Z" });
+  await git.writeState({ refs: { main: readme.sha, "claude/nhap-ban-thao": branch.sha }, pulls: [] });
+  fake.addPull({ number: 1, title: "Nhập bản thảo Act 1", head: "claude/nhap-ban-thao" });
+
+  await connect(page);
+  await expect(page.getByTestId("pending-init")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Khởi tạo cấu trúc" })).toHaveCount(0);
+  await page.getByTestId("pending-init").getByRole("link").first().click();
+  await expect(page).toHaveURL(/\/proposal\/\?n=1$/);
+  // tên chương lấy từ file trong đề xuất, không phải "Ch 0"
+  await expect(page.getByTestId("proposal-file").first()).toContainText(/Ch 1 · /);
+  await page.getByTestId("accept").click();
+  await page.getByTestId("confirm-accept").click();
+  await expect(page.getByText(/Đã nhập đề xuất vào bản chính/)).toBeVisible();
+  await go(page, "/library/");
+  await expect(page.getByTestId("chapter-tree").locator(".tree-ch")).toHaveCount(200);
+});

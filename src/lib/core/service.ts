@@ -394,9 +394,24 @@ export class ManuscriptService {
 
   // ---------------- đề xuất (pull request) ----------------
 
+  /**
+   * Như snapshot() nhưng không lỗi khi nhánh chính chưa có cấu trúc bản thảo
+   * (ví dụ repo mới, cấu trúc đang nằm trong một đề xuất chưa nhập).
+   */
+  async snapshotOrEmpty(): Promise<{ headSha: string; tree: Map<string, string>; chapters: ChapterSummary[]; initialized: boolean }> {
+    try {
+      const s = await this.snapshot();
+      return { headSha: s.headSha, tree: s.tree, chapters: s.chapters, initialized: true };
+    } catch (e) {
+      if (!(e instanceof NotInitializedError)) throw e;
+      const headSha = await this.head();
+      return { headSha, tree: await this.store.getTree(headSha), chapters: [], initialized: false };
+    }
+  }
+
   async proposalDetail(n: number) {
     const pr: PullDetail = await this.store.getPull(n);
-    const snap = await this.snapshot();
+    const snap = await this.snapshotOrEmpty();
     const byPath = new Map(snap.chapters.map((c) => [c.path, c]));
     const baseTree = await this.store.getTree(pr.mergeBase);
     const headTree = pr.headSha ? await this.store.getTree(pr.headSha) : new Map<string, string>();
@@ -409,7 +424,7 @@ export class ManuscriptService {
       return {
         ...f,
         kind: fileKind(f.path),
-        chapter: ch ? { id: ch.id, number: ch.number, title: ch.title } : id ? { id, number: 0, title: id } : null,
+        chapter: ch ? { id: ch.id, number: ch.number, title: ch.title } : id ? newChapterLabel(id, after ? await this.store.readBlob(after) : null) : null,
         beforeBlob: before,
         afterBlob: after,
         /** File trên bản chính đã đổi kể từ khi agent bắt đầu (merge base). */
@@ -441,6 +456,17 @@ export class ManuscriptService {
       blocks.push(`\n## ${shortTitle(c)}\n\n${bodies[i].replace(/\s+$/, "")}\n`);
     });
     return { text: blocks.join(""), snap };
+  }
+}
+
+/** Chương chỉ có trong đề xuất (chưa có trên bản chính): lấy tên và thứ tự từ chính file. */
+function newChapterLabel(id: string, text: string | null) {
+  if (!text) return { id, number: 0, title: id };
+  try {
+    const d = parseChapter(text, id);
+    return { id, number: d.meta.order, title: d.meta.title };
+  } catch {
+    return { id, number: 0, title: id };
   }
 }
 

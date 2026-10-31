@@ -143,7 +143,7 @@ function NotReady({ error }: { error: Error & { code?: string } }) {
         <div className="b-body">
           <div className="b-title">{error.code === "not_initialized" ? "Repository chưa có cấu trúc bản thảo" : "Không tải được dự án"}</div>
           <div className="small">{error.message}</div>
-          <div className="b-actions"><Link className="btn sm" href="/settings">Mở thiết lập kết nối</Link></div>
+          <div className="b-actions"><Link className="btn sm" href="/proposals">Xem đề xuất đang chờ</Link><Link className="btn sm" href="/settings">Mở thiết lập kết nối</Link></div>
         </div>
       </div>
     </div></div>

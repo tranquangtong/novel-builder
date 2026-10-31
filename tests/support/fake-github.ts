@@ -18,6 +18,13 @@ export function fakeGitHub(git: MiniGit, opts: { owner?: string; repo?: string; 
   const failures: { method: string; re: RegExp; status: number; message: string }[] = [];
   let mergeHead = "";
   let mergeable: boolean | null = true;
+  const pulls: { number: number; title: string; body: string; head: string; base: string; state: "open" | "closed"; merged_at: string | null; user: string }[] = [];
+  const prJson = async (p: (typeof pulls)[number]) => {
+    const s = await git.readState();
+    return { number: p.number, title: p.title, body: p.body, state: p.state, merged_at: p.merged_at, user: { login: p.user }, draft: false,
+      head: { ref: p.head, sha: s.refs[p.head] }, base: { ref: p.base, sha: s.refs[p.base] },
+      created_at: "2026-10-31T00:00:00Z", updated_at: "2026-10-31T00:00:00Z", mergeable: true, mergeable_state: "clean", html_url: `https://github.com${R}/pull/${p.number}` };
+  };
 
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "access-control-allow-origin": "*" } });
@@ -92,7 +99,43 @@ export function fakeGitHub(git: MiniGit, opts: { owner?: string; repo?: string; 
       const files = await git.changedFiles(c.parents[0] ?? null, c.sha);
       return json(200, { sha: c.sha, parents: c.parents.map((s) => ({ sha: s })), commit: { message: c.message, author: { name: c.author, date: c.date } }, author: { login: c.author }, files: files.map((f) => ({ filename: f.path, status: f.status })) });
     }
-    if (method === "GET" && p === `${R}/pulls`) return json(200, []);
+    if (method === "GET" && p === `${R}/pulls`) {
+      const st = url.searchParams.get("state") ?? "open";
+      return json(200, await Promise.all(pulls.filter((x) => st === "all" || (st === "open" ? x.state === "open" : x.state !== "open")).map(prJson)));
+    }
+    if (method === "GET" && (m = new RegExp(`^${R}/pulls/(\\d+)$`).exec(p))) {
+      const pr = pulls.find((x) => x.number === Number(m![1]));
+      return pr ? json(200, await prJson(pr)) : json(404, { message: "Not Found" });
+    }
+    if (method === "GET" && (m = new RegExp(`^${R}/pulls/(\\d+)/files$`).exec(p))) {
+      const pr = pulls.find((x) => x.number === Number(m![1]))!;
+      const s = await git.readState();
+      const mb = await git.mergeBase(s.refs[pr.base], s.refs[pr.head]);
+      if (Number(url.searchParams.get("page") ?? 1) > 1) return json(200, []);
+      return json(200, (await git.changedFiles(mb, s.refs[pr.head])).map((f) => ({ filename: f.path, status: f.status })));
+    }
+    if (method === "GET" && (/\/issues\/\d+\/comments$/.test(p) || /\/pulls\/\d+\/reviews$/.test(p))) return json(200, []);
+    if (method === "GET" && (m = new RegExp(`^${R}/compare/(.+)\\.\\.\\.(.+)$`).exec(p))) {
+      const s = await git.readState();
+      const resolve = (x: string) => s.refs[x] ?? x;
+      const a = resolve(m[1]), b = resolve(m[2]);
+      const mb = await git.mergeBase(a, b);
+      return json(200, { merge_base_commit: { sha: mb }, files: (await git.changedFiles(mb, b)).map((f) => ({ filename: f.path, status: f.status })) });
+    }
+    if (method === "PUT" && (m = new RegExp(`^${R}/pulls/(\\d+)/merge$`).exec(p)) && pulls.some((x) => x.number === Number(m![1]))) {
+      const pr = pulls.find((x) => x.number === Number(m![1]))!;
+      const s = await git.readState();
+      if (body!.sha !== s.refs[pr.head]) return json(409, { message: "Head branch was modified. Review and try the merge again." });
+      const mb = await git.mergeBase(s.refs[pr.base], s.refs[pr.head]);
+      const { tree, conflicts } = await git.threeWay(mb, s.refs[pr.base], s.refs[pr.head]);
+      if (conflicts.length) return json(405, { message: "Pull Request is not mergeable" });
+      const c = await git.writeCommit({ tree, parents: [s.refs[pr.base], s.refs[pr.head]], message: String(body!.commit_title ?? "merge"), author: FAKE_LOGIN, date: new Date().toISOString() });
+      s.refs[pr.base] = c.sha;
+      await git.writeState(s);
+      pr.state = "closed";
+      pr.merged_at = new Date().toISOString();
+      return json(200, { sha: c.sha, merged: true });
+    }
     if (method === "PUT" && (m = new RegExp(`^${R}/pulls/(\\d+)/merge$`).exec(p))) {
       if (body!.sha !== mergeHead) return json(409, { message: "Head branch was modified. Review and try the merge again." });
       if (!mergeable) return json(405, { message: "Pull Request is not mergeable" });
@@ -106,6 +149,9 @@ export function fakeGitHub(git: MiniGit, opts: { owner?: string; repo?: string; 
     /** Lần gọi khớp kế tiếp sẽ trả lỗi (để thử “lưu thất bại”). */
     failNext(method: string, re: RegExp, status = 502, message = "Server Error") {
       failures.push({ method, re, status, message });
+    },
+    addPull(pr: { number: number; title: string; body?: string; head: string; base?: string; user?: string }) {
+      pulls.push({ body: "", base: "main", user: "claude", state: "open", merged_at: null, ...pr });
     },
     setMerge(head: string, ok: boolean | null) {
       mergeHead = head;

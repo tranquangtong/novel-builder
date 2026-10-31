@@ -171,7 +171,7 @@ const routes: [string, RegExp, Handler][] = [
   ["GET", /^\/api\/proposals$/, async ({ query }) => {
     const st = query.get("state");
     const { svc } = await getBackend();
-    const [pulls, snap] = await Promise.all([svc.store.listPulls(st === "closed" || st === "all" ? st : "open"), svc.snapshot()]);
+    const [pulls, snap] = await Promise.all([svc.store.listPulls(st === "closed" || st === "all" ? st : "open"), svc.snapshotOrEmpty()]);
     const byPath = new Map(snap.chapters.map((c) => [c.path, { id: c.id, number: c.number, title: c.title }]));
     return { pulls: pulls.map((p) => ({ ...p, chapters: p.files.map((f) => byPath.get(f.path)).filter(Boolean) })) };
   }],
