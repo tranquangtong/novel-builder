@@ -1,4 +1,5 @@
 "use client";
+import { localApi, LocalApiError } from "./local-api";
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number, public readonly code: string | undefined, public readonly data: Record<string, unknown>) {
@@ -6,28 +7,16 @@ export class ApiError extends Error {
   }
 }
 
+/** Gọi “API” cục bộ chạy trong trình duyệt (xem local-api.ts). Giữ chữ ký cũ để giao diện không đổi. */
 export async function api<T = unknown>(path: string, opts: { method?: string; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
-  let res: Response;
+  const method = opts.method ?? (opts.body !== undefined ? "POST" : "GET");
   try {
-    res = await fetch(path, {
-      method: opts.method ?? (opts.body !== undefined ? "POST" : "GET"),
-      headers: opts.body !== undefined ? { "Content-Type": "application/json" } : undefined,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-      signal: opts.signal,
-      cache: "no-store",
-      credentials: "same-origin",
-    });
+    return (await localApi(method, path, opts.body)) as T;
   } catch (e) {
-    throw new ApiError(`Không kết nối được máy chủ (${(e as Error).message})`, 0, "network", {});
+    const le = e instanceof LocalApiError ? e : new LocalApiError(e instanceof Error ? e.message : String(e), 500, "internal");
+    if (le.status === 401 && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("nb:unauthenticated"));
+    throw new ApiError(le.message, le.status, le.code, le.data);
   }
-  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) {
-    if (res.status === 401 && typeof window !== "undefined" && !path.startsWith("/api/auth")) {
-      window.dispatchEvent(new CustomEvent("nb:unauthenticated"));
-    }
-    throw new ApiError(String(data.error ?? `Lỗi ${res.status}`), res.status, data.code as string | undefined, data);
-  }
-  return data as T;
 }
 
 export const short = (sha?: string | null) => (sha ? sha.slice(0, 7) : "—");

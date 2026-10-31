@@ -1,40 +1,50 @@
 import { expect, type Page } from "@playwright/test";
 import type { ChapterVersion, ProjectSnapshot } from "../../src/lib/domain/types";
 
-export async function login(page: Page) {
-  const r = await page.request.post("/api/auth/demo", { data: { passcode: "e2e-pass" } });
-  expect(r.ok()).toBeTruthy();
+export const B = process.env.NEXT_PUBLIC_BASE_PATH || "/novel-builder";
+export const go = (page: Page, p: string) => page.goto(`${B}${p}`);
+
+declare global {
+  interface Window {
+    __nbTest?: { api: (method: string, path: string, body?: unknown) => Promise<unknown> };
+  }
 }
 
-export async function snapshot(page: Page): Promise<ProjectSnapshot> {
-  const r = await page.request.get("/api/project");
-  expect(r.ok()).toBeTruthy();
-  return r.json();
+/** Chọn chế độ demo (kho demo nằm trong IndexedDB của context trình duyệt này). */
+export async function useDemo(page: Page) {
+  await go(page, "/settings/");
+  await page.getByTestId("use-demo").click();
+  await waitBackend(page);
 }
+
+export async function waitBackend(page: Page) {
+  await page.waitForFunction(() => !!window.__nbTest, null, { timeout: 30_000 });
+}
+
+/** Gọi thao tác nghiệp vụ ngay trong trang (cửa test chỉ có ở chế độ demo). */
+export async function call<T = unknown>(page: Page, method: string, path: string, body?: unknown): Promise<T> {
+  await waitBackend(page);
+  return page.evaluate(([m, p, b]) => window.__nbTest!.api(m as string, p as string, b), [method, path, body] as const) as Promise<T>;
+}
+
+export const snapshot = (page: Page) => call<ProjectSnapshot>(page, "GET", "/api/project");
 
 export async function chapterByNumber(page: Page, n: number) {
-  const s = await snapshot(page);
-  const c = s.chapters.find((x) => x.number === n);
+  const c = (await snapshot(page)).chapters.find((x) => x.number === n);
   if (!c) throw new Error(`no chapter ${n}`);
   return c;
 }
 
-export async function readChapter(page: Page, id: string, commit?: string): Promise<ChapterVersion> {
-  const r = await page.request.get(`/api/chapters/${id}${commit ? `?commit=${commit}` : ""}`);
-  expect(r.ok()).toBeTruthy();
-  return r.json();
-}
+export const readChapter = (page: Page, id: string, commit?: string) => call<ChapterVersion>(page, "GET", `/api/chapters/${id}${commit ? `?commit=${commit}` : ""}`);
 
 export async function openChapter(page: Page, id: string) {
-  await page.goto(`/chapters/${id}`);
+  await go(page, `/chapter/?id=${id}`);
   await expect(page.getByTestId("save-state")).toBeVisible();
-  // đợi nội dung chương được nạp vào editor
   await expect(page.getByTestId("chapter-title")).not.toHaveValue("");
 }
 
 export async function typeAtEnd(page: Page, text: string) {
-  const ed = page.getByTestId("editor-content");
-  await ed.click();
+  await page.getByTestId("editor-content").click();
   await page.keyboard.press("Control+End");
   await page.keyboard.insertText(text);
 }

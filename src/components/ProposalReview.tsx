@@ -158,7 +158,7 @@ export function ProposalReview({ number }: { number: number }) {
                 <div className="small muted">Chấp nhận từng câu/đoạn riêng lẻ chưa có trong bản này — hiện chỉ có thể nhập toàn bộ đề xuất.</div>
                 <details className="small">
                   <summary style={{ cursor: "pointer" }}>Approval chính thức trên GitHub</summary>
-                  <p className="muted">“Chấp nhận” ở trên là thao tác của ứng dụng: nhập đề xuất vào bản chính (merge). Approval chính thức là một review “Approve” trên GitHub, chỉ cần nếu repo có quy tắc bắt buộc review. GitHub không cho tác giả PR tự approve PR của mình{view.mode === "github" ? `; review từ ứng dụng được gửi bằng danh tính ${latest?.actor ?? "của GitHub App"}` : ""}.</p>
+                  <p className="muted">“Chấp nhận” ở trên là thao tác của ứng dụng: nhập đề xuất vào bản chính (merge). Approval chính thức là một review “Approve” trên GitHub, chỉ cần nếu repo có quy tắc bắt buộc review. GitHub không cho tác giả PR tự approve PR của mình{view.mode === "github" ? `; review từ trang này được gửi bằng tài khoản của token (${latest?.actor ?? "?"}). Nếu agent mở PR bằng chính tài khoản đó thì không approve được — điều này không ảnh hưởng tới “Chấp nhận”` : ""}.</p>
                   <button className="btn sm" disabled={busy || actorIsAuthor} onClick={() => setDialog("approve")}>Gửi approval chính thức</button>
                   {actorIsAuthor && <div className="muted">Không khả dụng: đề xuất này do chính danh tính {latest?.actor} tạo.</div>}
                 </details>

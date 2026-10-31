@@ -1,93 +1,69 @@
 # The Last Miracle — Xưởng viết riêng tư
 
-Web app để viết và quản lý tiểu thuyết dài kỳ, cộng tác với AI agent qua GitHub, xem lại đề xuất chỉnh sửa và phục hồi phiên bản. Bản thảo được lưu trong một **private GitHub repository** (repo bản thảo), còn repo này chứa **mã nguồn ứng dụng**.
+Trang web để viết và quản lý tiểu thuyết dài kỳ, chạy trên **GitHub Pages** (giống gymbro-web). Bản thảo nằm trong một **repo GitHub private riêng**. Claude (Claude Code) làm agent trên repo đó: sửa trên nhánh riêng và mở pull request. Bạn đọc, so sánh và quyết định nhập ngay trên trang.
 
-Đây là công cụ riêng tư cho một tác giả, không phải website đăng truyện.
+- Trang: `https://tranquangtong.github.io/novel-builder/` (sau khi bật Pages, xem bên dưới)
+- Repo này (`novel-builder`, public) chỉ chứa **mã của trang**, không chứa bản thảo.
+- Không có máy chủ: trình duyệt gọi thẳng `api.github.com` bằng token của bạn.
 
-## Chạy thử nhanh (chế độ demo, không cần credentials)
+## Bật lần đầu (làm một lần)
 
-Cần Node.js ≥ 20.9.
+1. **Bật GitHub Pages cho repo này:** Settings → Pages → *Build and deployment* → Source: **GitHub Actions**.
+2. **Tạo repo bản thảo private**, ví dụ `the-last-miracle-manuscript`, tick "Add a README".
+3. (Tùy chọn) Settings → Secrets and variables → Actions → **Variables** → thêm `MANUSCRIPT_REPO` = `tranquangtong/the-last-miracle-manuscript`. Trang Kết nối sẽ điền sẵn tên repo này.
+4. Mỗi lần có push lên nhánh mặc định, workflow `.github/workflows/pages.yml` chạy lint, typecheck, unit test, build và E2E, rồi mới deploy. Theo dõi ở tab **Actions**.
+5. Mở trang → **Kết nối GitHub** → bấm link tạo **fine-grained token** (đã điền sẵn quyền):
+   - Repository access: **Only select repositories** → chọn **đúng repo bản thảo**.
+   - Quyền: **Contents: Read and write**, **Pull requests: Read and write**.
+   - Dán token vào trang và bấm **Kết nối & kiểm tra**. Nếu repo còn trống thì bấm **Khởi tạo cấu trúc**.
+6. Chuyển bản thảo từ Google Docs: *Tệp → Tải xuống → .txt hoặc .md*, rồi mở trang **Nhập & xuất** để xem trước và nhập.
 
-```bash
-npm install
-```
+Muốn thử trước khi có repo thật: trên trang Kết nối, bấm **Thử với dữ liệu demo**. Chế độ này tạo 200 chương DỮ LIỆU DEMO chỉ trong trình duyệt của bạn.
 
-```bash
-npm run dev
-```
+## Cách làm việc với Claude
 
-Mở http://localhost:3000 và nhập mã truy cập `demo`. Lần đầu chạy, ứng dụng tạo **200 chương DỮ LIỆU DEMO** trong `.demo-data/`: một mini-git trên đĩa có commit, nhánh và pull request mô phỏng. Đây không phải bản thảo thật, và giao diện luôn hiện dải "DỮ LIỆU DEMO".
+- **Sửa bản thảo:** mở phiên Claude Code có gắn repo bản thảo, rồi giao việc, ví dụ "kiểm tra continuity Ch 10–11 với canon Kiếm Tro". Bạn có thể dán **Gói tài liệu** tạo từ trang. Claude đọc `AGENTS.md`, làm trên nhánh riêng, mở PR. Bạn mở trang → **Đề xuất chỉnh sửa** → xem trước/sau → **Chấp nhận**, **Yêu cầu sửa** hoặc **Đóng**.
+- **Sửa chính trang web:** giao việc trong phiên Claude Code gắn repo `novel-builder`. Claude sửa mã, chạy test, push; GitHub Actions tự build và deploy. Bạn không cần chạy gì trên máy.
 
-Muốn thử như production thì chạy `npm run build && npm start`. Muốn tạo lại dữ liệu demo thì dùng `npm run demo:reset` hoặc nút trong trang **Kết nối GitHub**.
+## Bảo mật: đọc kỹ
 
-Ở chế độ demo, trang **Đề xuất chỉnh sửa** có khu **Mô phỏng agent**: mở đề xuất sửa chương, hoặc sửa thẳng bản chính để thử phát hiện xung đột.
+- Trang Pages là **public**, nhưng chỉ chứa mã. Bản thảo chỉ được tải khi có token đọc được repo private, và GitHub tự kiểm tra quyền của token.
+- Token **chỉ nằm trong trình duyệt của bạn**: trong tab hiện tại, hoặc trên thiết bị nếu tick "Ghi nhớ". Token chỉ được gửi tới `api.github.com`; Content-Security-Policy của trang chặn kết nối tới mọi địa chỉ khác.
+- Chỉ tick "Ghi nhớ trên thiết bị này" trên máy riêng. Mất máy hoặc nghi lộ token thì thu hồi ở GitHub → Settings → Developer settings → Personal access tokens.
+- Token chỉ chọn **một repo bản thảo** với hai quyền ở trên. Đừng dùng token classic hay token có quyền trên mọi repo.
 
-## Kết nối GitHub thật
-
-Xem [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md). Tóm tắt:
-
-1. Tạo private repo cho bản thảo, khởi tạo có README.
-2. Tạo GitHub App với quyền **Contents: RW** và **Pull requests: RW** (Metadata: R là bắt buộc), tắt webhook, đặt callback `<APP_URL>/api/auth/github/callback`.
-3. Cài App **chỉ vào repo bản thảo**.
-4. Điền `.env.local` theo `.env.example` với `DATA_MODE=github`.
-5. Đăng nhập, mở **Kết nối GitHub → Kiểm tra kết nối thật**, rồi **Khởi tạo cấu trúc** nếu repo còn trống.
-
-> Tích hợp GitHub thật **chưa được chạy với GitHub thật** trong môi trường phát triển vì không có credentials. Xem [docs/VERIFICATION.md](docs/VERIFICATION.md) để biết phần nào đã kiểm chứng và bằng cách nào.
-
-## Lệnh
+## Cho người phát triển
 
 | Lệnh | Việc |
 |---|---|
-| `npm run dev` | Chạy dev server |
-| `npm run build` / `npm start` | Build và chạy production |
-| `npm run lint` | ESLint (cấu hình Next.js) |
-| `npm run typecheck` | TypeScript |
-| `npm test` | Unit/integration test (Vitest), gồm GitHubStore chạy với GitHub API giả |
-| `npm run test:e2e` | E2E Playwright trên bản build production ở chế độ demo (chạy `npm run build` trước) |
-| `npm run reindex -- <đường-dẫn-repo-bản-thảo>` | Sinh lại `content/index.json` trong một bản clone (bảo trì thủ công) |
-| `npm run demo:reset` | Xóa dữ liệu demo |
+| `npm run dev` | Dev server |
+| `npm run build` | Xuất tĩnh vào `out/` (đặt `NEXT_PUBLIC_BASE_PATH=/novel-builder` để giống Pages) |
+| `npm start` | Phục vụ `out/` như GitHub Pages (`scripts/serve-static.mjs`) |
+| `npm run lint` / `npm run typecheck` / `npm test` | ESLint / TypeScript / Vitest |
+| `npm run test:e2e` | Playwright trên bản xuất tĩnh: chế độ demo và chế độ GitHub với API giả |
 
-## Kiến trúc
+### Kiến trúc
 
 ```
-Trình duyệt (React, Next.js App Router)
- ├─ Nháp: IndexedDB  ← chỉ trên thiết bị, khóa theo repo + chapter ID + phiên bản gốc
- └─ fetch /api/*     ← cookie phiên (JWE, httpOnly, SameSite=Lax)
-Máy chủ Next.js (Node)
- ├─ guarded(): kiểm tra phiên + chủ sở hữu được phép + origin cho mọi API nội dung
- ├─ ManuscriptService  ← logic nghiệp vụ dùng chung cho hai chế độ
- └─ RepoStore (interface)
-     ├─ DemoStore   → mini-git trên đĩa (.demo-data)
-     └─ GitHubStore → GitHub REST API bằng installation token của GitHub App
+GitHub Pages (tĩnh, public)            Repo bản thảo (private)
+  Next.js static export                   content/… , AGENTS.md
+  ├─ Nháp: IndexedDB (thiết bị)              ▲
+  ├─ Token: sessionStorage/localStorage      │ REST API (CORS), token của tác giả
+  └─ ManuscriptService ──► GitHubStore ───────┘
+                       └─► DemoStore (mini-git trong IndexedDB, chỉ để thử)
 ```
 
-- **Chỉ một dịch vụ, không có database.** Repository là nguồn chính của mọi phiên bản đã lưu. Máy chủ chỉ cache dữ liệu bất biến theo sha, trong bộ nhớ.
-- **Một lần lưu = một commit nguyên tử.** Chương, metadata và chỉ mục được ghi chung qua Git Data API (tree → commit → cập nhật ref với `force: false`). Không có trạng thái "lưu dở".
-- **Phát hiện xung đột theo blob sha của từng file.** Nếu chương đã đổi so với phiên bản bạn dựa vào, máy chủ trả 409 và giữ nguyên nháp. Nếu chỉ có file khác đổi trong lúc lưu, máy chủ tự thử lại.
-- **Không lộ bản thảo trong build:** mọi trang và API đều động (`ƒ` trong `next build`), nội dung chỉ được tải sau khi kiểm tra phiên.
+- **Một lần lưu = một commit nguyên tử** (Git Data API: tree → commit → cập nhật ref với `force: false`). Chương, metadata và chỉ mục được ghi cùng nhau.
+- **Phát hiện xung đột theo blob sha của từng file**: nếu chương đã đổi so với bản bạn dựa vào thì từ chối lưu và giữ nháp; nếu chỉ file khác đổi thì tự thử lại.
+- Danh sách 200+ chương chỉ đọc `content/index.json`; mở chương nào thì chỉ tải chương đó.
 
-Chi tiết schema và các luồng lưu/duyệt/phục hồi: [docs/SCHEMA_AND_FLOWS.md](docs/SCHEMA_AND_FLOWS.md).
-Triển khai mà không làm lộ bản thảo: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-Quy tắc cho agent (đặt trong repo bản thảo): [templates/manuscript/AGENTS.md](templates/manuscript/AGENTS.md).
-
-## Các màn hình
-
-1. **Tổng quan**: số chương, số chữ, tiến độ theo Act, nháp chưa lưu trên thiết bị, đề xuất đang chờ, phiên bản gần đây.
-2. **Thư viện Act & chương**: tạo Act/chương, đổi thứ tự, lọc theo trạng thái.
-3. **Viết/đọc chương**: editor Markdown (CodeMirror 6) có toolbar, tìm/thay trong chương (Ctrl+F), đếm chữ trực tiếp so với mục tiêu 2.500–3.000, chế độ đọc. Panel phụ có các tab Thông tin, Phiên bản, Canon, Ghi chú, Review.
-4. **Canon & outline**: canon đã chốt · sự kiện đã xảy ra · kiến thức nhân vật · outline (kế hoạch) · tóm tắt (có cờ "đã cũ") · đề xuất chưa duyệt.
-5. **Đề xuất chỉnh sửa**: danh sách pull request liên quan nội dung, diff theo đoạn và từ, bản render trước/sau, bình luận, chấp nhận (merge), yêu cầu sửa, đóng.
-6. **Lịch sử & phục hồi**: mọi phiên bản; phục hồi một hoặc nhiều chương bằng phiên bản mới, có xem trước.
-7. **Kết nối GitHub**: trạng thái cấu hình (không lộ giá trị), kiểm tra kết nối thật, hướng dẫn.
-8. Thêm: **Gói tài liệu cho agent** và **Nhập & xuất**.
+Chi tiết: [docs/SCHEMA_AND_FLOWS.md](docs/SCHEMA_AND_FLOWS.md) · Bảo mật và triển khai: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · Kiểm chứng: [docs/VERIFICATION.md](docs/VERIFICATION.md) · Quy tắc agent: [templates/manuscript/AGENTS.md](templates/manuscript/AGENTS.md)
 
 ## Hạn chế còn lại
 
-- Chưa kiểm chứng với GitHub thật (cần credentials). Danh sách việc cần thử khi có credentials nằm trong [docs/VERIFICATION.md](docs/VERIFICATION.md).
-- Chỉ chấp nhận được **toàn bộ** đề xuất. Chấp nhận từng câu/đoạn thuộc giai đoạn sau.
-- Xử lý xung đột theo kiểu "so sánh rồi chọn giữ bản của tôi hoặc bản trên kho". Chưa có công cụ gộp 3 chiều trong editor.
-- Bình luận/review gửi từ ứng dụng mang danh tính GitHub App (`<app>[bot]`) kèm tên tác giả. Commit ghi tác giả là tài khoản của bạn.
-- Khi GitHub báo không merge được, GitHub không cho biết file nào xung đột. Ứng dụng ước lượng bằng các file thay đổi ở cả hai phía.
-- Nếu một PR đổi metadata ở nhiều chương, `content/index.json` có thể lệch sau merge. Ứng dụng phát hiện, vẫn hiển thị đúng (đọc trực tiếp các file lệch) và tự sửa ở lần lưu tiếp theo hoặc khi bấm "Cập nhật chỉ mục".
-- Chế độ demo lưu trên đĩa cục bộ nên không dùng được trên serverless. Chế độ GitHub không cần đĩa.
-- Chưa có: nhập trực tiếp Google Docs từ URL, xuất DOCX/PDF, cộng tác thời gian thực, gọi model AI trong ứng dụng.
+- **Chưa kiểm chứng với GitHub thật.** Đã test với GitHub API giả mô phỏng theo đặc tả chính thức; cần bạn tạo repo và token để chạy thử thật (danh sách ở `docs/VERIFICATION.md`).
+- Đăng nhập dùng token dán tay, không có nút "Đăng nhập với GitHub", vì luồng OAuth của GitHub cần máy chủ: bước đổi mã không hỗ trợ CORS. Token hết hạn thì tạo token mới và dán lại.
+- Chỉ chấp nhận được **toàn bộ** đề xuất. Chưa có gộp 3 chiều trong editor: khi xung đột thì so sánh rồi chọn bản giữ lại.
+- Nếu Claude mở PR bằng chính tài khoản của token, nút "approval chính thức trên GitHub" không dùng được (GitHub cấm tự approve). "Chấp nhận" (merge) vẫn hoạt động.
+- Chế độ demo lưu trong trình duyệt; mỗi trình duyệt có kho demo riêng.
+- Chưa có: nhập Google Docs từ URL, xuất DOCX/PDF, cộng tác thời gian thực.

@@ -1,4 +1,5 @@
 "use client";
+import { chapterHref, proposalHref } from "@/lib/client/links";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -39,7 +40,7 @@ export default function OverviewPage() {
           </div>
           <div className="actions">
             <Link className="btn" href="/library">Thư viện chương</Link>
-            {snap.chapters[0] && <Link className="btn primary" href={`/chapters/${(drafts[0]?.chapterId && byId.has(drafts[0].chapterId) ? drafts[0].chapterId : snap.chapters[0].id)}`}>Tiếp tục viết</Link>}
+            {snap.chapters[0] && <Link className="btn primary" href={chapterHref((drafts[0]?.chapterId && byId.has(drafts[0].chapterId) ? drafts[0].chapterId : snap.chapters[0].id))}>Tiếp tục viết</Link>}
           </div>
         </div>
 
@@ -91,7 +92,7 @@ export default function OverviewPage() {
               {drafts.map((d) => {
                 const c = byId.get(d.chapterId);
                 return (
-                  <Link key={d.key} href={`/chapters/${d.chapterId}`} className="list-item">
+                  <Link key={d.key} href={chapterHref(d.chapterId)} className="list-item">
                     <span className="dot local" />
                     <span style={{ flex: 1 }}>{c ? `Ch ${c.number} · ` : ""}{d.meta.title}</span>
                     <span className="small muted">{relTime(d.updatedAt)}</span>
@@ -108,7 +109,7 @@ export default function OverviewPage() {
             {pulls.data && !pulls.data.pulls.length && <div className="small muted">Không có đề xuất nào.</div>}
             <div className="list">
               {pulls.data?.pulls.slice(0, 6).map((p) => (
-                <Link key={p.number} href={`/proposals/${p.number}`} className="list-item">
+                <Link key={p.number} href={proposalHref(p.number)} className="list-item">
                   <span className="mono small muted">#{p.number}</span>
                   <span style={{ flex: 1 }}>{p.title}</span>
                   <span className="small muted">{p.chapters.map((c) => `Ch ${c.number}`).join(", ")}</span>

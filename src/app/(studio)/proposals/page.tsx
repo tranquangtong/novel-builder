@@ -1,4 +1,5 @@
 "use client";
+import { proposalHref } from "@/lib/client/links";
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,7 +42,7 @@ export default function ProposalsPage() {
           {q.data && !list.length && <div className="empty">Không có đề xuất nào.</div>}
           <div className="list" data-testid="proposal-list">
             {list.map((p) => (
-              <Link key={p.number} href={`/proposals/${p.number}`} className="list-item" style={{ alignItems: "flex-start" }}>
+              <Link key={p.number} href={proposalHref(p.number)} className="list-item" style={{ alignItems: "flex-start" }}>
                 <span className="mono small muted" style={{ paddingTop: 2 }}>#{p.number}</span>
                 <span style={{ flex: 1 }}>
                   <span style={{ fontWeight: 500 }}>{p.title}</span>

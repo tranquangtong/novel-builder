@@ -1,4 +1,5 @@
 "use client";
+import { exportMarkdown } from "@/lib/client/local-api";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -100,7 +101,7 @@ export default function ImportExportPage() {
           <div className="card card-pad">
             <h2>Xuất</h2>
             <div className="grid" style={{ gap: 8 }}>
-              <a className="btn" href="/api/export">Tải toàn bộ bản thảo (.md)</a>
+              <button className="btn" onClick={() => void exportMarkdown()}>Tải toàn bộ bản thảo (.md)</button>
               <div className="small muted">Toàn bộ chương theo thứ tự, có tiêu đề Act. Xuất từng chương: mở chương → “Xuất .md”. DOCX/PDF để giai đoạn sau.</div>
             </div>
             <div className="banner info" style={{ marginTop: 12 }}>

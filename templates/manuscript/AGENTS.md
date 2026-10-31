@@ -48,7 +48,7 @@ vật hành động như thể đã biết điều họ chưa được biết.
 
 ## 4. Quy trình mỗi nhiệm vụ
 
-1. Mỗi nhiệm vụ một **branch riêng**, tạo từ `main` mới nhất, tên dạng `agent/<mô-tả-ngắn>`.
+1. Mỗi nhiệm vụ một **branch riêng**, tạo từ `main` mới nhất, tên dạng `agent/<mô-tả-ngắn>` (Claude Code có thể dùng `claude/<…>`). Không dùng lại branch của PR đã merge.
 2. Chỉ sửa những file trong phạm vi được yêu cầu. Không “tiện tay” sửa chương khác, không
    format lại toàn file, không đổi dấu câu/chính tả ngoài phạm vi.
 3. **Không sửa `content/index.json`** (ứng dụng tự sinh lại; sửa tay gây xung đột merge).

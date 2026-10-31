@@ -1,4 +1,5 @@
 "use client";
+import { chapterHref } from "@/lib/client/links";
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -76,7 +77,7 @@ function History() {
                       return (
                         <tr key={f.path}>
                           <td style={{ width: 90 }}><span className={`chip ${f.status === "added" ? "ok" : f.status === "removed" ? "danger" : ""}`}>{f.status === "added" ? "thêm" : f.status === "removed" ? "xóa" : "sửa"}</span></td>
-                          <td>{c ? <Link href={`/chapters/${c.id}`}>Ch {c.number} · {c.title}</Link> : <span className="mono small">{f.path}</span>}</td>
+                          <td>{c ? <Link href={chapterHref(c.id)}>Ch {c.number} · {c.title}</Link> : <span className="mono small">{f.path}</span>}</td>
                           <td className="small muted">{KIND_LABEL[fileKind(f.path)]}</td>
                         </tr>
                       );

@@ -73,3 +73,23 @@ describe("đường dẫn an toàn", () => {
     expect(assertSafeContentPath("content/canon/world/kiem-tro.md")).toBe("content/canon/world/kiem-tro.md");
   });
 });
+
+describe("sha1 thuần JS", () => {
+  it("khớp node:crypto và git hash-object với nhiều độ dài", async () => {
+    const { createHash } = await import("node:crypto");
+    const { execSync } = await import("node:child_process");
+    const { sha1OfString } = await import("@/lib/domain/gitsha");
+    for (const s of ["", "hello\n", "Tiếng Việt — “Ừ”\n".repeat(50), "x".repeat(55), "x".repeat(56), "x".repeat(64), "x".repeat(119)]) {
+      expect(sha1OfString(s)).toBe(createHash("sha1").update(s).digest("hex"));
+      expect(gitBlobSha(s)).toBe(execSync("git hash-object --stdin", { input: s }).toString().trim());
+    }
+  });
+});
+
+describe("AGENTS.md", () => {
+  it("bản trong mã giống hệt templates/manuscript/AGENTS.md", async () => {
+    const fs = await import("node:fs");
+    const { AGENTS_MD } = await import("@/lib/domain/agents-md");
+    expect(AGENTS_MD).toBe(fs.readFileSync("templates/manuscript/AGENTS.md", "utf8"));
+  });
+});

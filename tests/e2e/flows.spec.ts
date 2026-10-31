@@ -1,36 +1,33 @@
 import { expect, test } from "@playwright/test";
-import { chapterByNumber, login, openChapter, readChapter, snapshot, typeAtEnd } from "./helpers";
+import { B, call, chapterByNumber, go, openChapter, readChapter, snapshot, typeAtEnd, useDemo } from "./helpers";
 
 const VI = "\n\nĐêm ấy, Puna thức trắng — cô nghĩ về lời hứa với Ben. “Ừ,” Rei đáp khẽ; gió lùa qua khe cửa, mang theo mùi tro ngai ngái.";
 
-test.describe("Xác thực", () => {
-  test("không đọc/ghi nội dung khi chưa đăng nhập", async ({ page, request }) => {
-    for (const url of ["/api/project", "/api/chapters/ch_abcdefghij", "/api/proposals", "/api/export", "/api/history", "/api/files?prefix=content/canon/", "/api/file?path=content/project.json"]) {
-      const r = await request.get(url);
-      expect(r.status(), url).toBe(401);
-      expect(await r.text()).not.toContain("Puna");
-    }
-    const w = await request.put("/api/chapters/ch_abcdefghij", { data: { meta: {}, body: "x", baseBlob: null } });
-    expect(w.status()).toBe(401);
-    const m = await request.post("/api/proposals/1/merge", { data: { expectedHeadSha: "a".repeat(40) } });
-    expect(m.status()).toBe(401);
-    const bad = await request.post("/api/auth/demo", { data: { passcode: "sai" } });
-    expect(bad.status()).toBe(401);
-    await page.goto("/library");
-    await expect(page).toHaveURL(/\/login$/);
+test.describe("Truy cập", () => {
+  test("chưa kết nối: chỉ vào được trang Kết nối, không gửi request ra ngoài", async ({ page }) => {
+    const external: string[] = [];
+    page.on("request", (r) => {
+      if (!r.url().startsWith("http://localhost")) external.push(r.url());
+    });
+    await go(page, "/library/");
+    await expect(page).toHaveURL(new RegExp(`${B}/settings/$`));
+    await expect(page.getByTestId("conn-token")).toBeVisible();
+    await expect(page.getByTestId("chapter-tree")).toHaveCount(0);
+    expect(external).toEqual([]);
   });
 
-  test("chặn request ghi từ origin khác", async ({ page }) => {
-    await login(page);
-    const c = await chapterByNumber(page, 3);
-    const r = await page.request.put(`/api/chapters/${c.id}`, { data: { meta: c, body: "x", baseBlob: c.blob }, headers: { Origin: "https://evil.example" } });
-    expect(r.status()).toBe(403);
+  test("CSP chỉ cho phép kết nối tới chính trang và api.github.com", async ({ page }) => {
+    await go(page, "/settings/");
+    const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content");
+    expect(csp).toContain("connect-src 'self' https://api.github.com");
+    const blocked = await page.evaluate(() => fetch("https://example.com/").then(() => "ok", () => "blocked"));
+    expect(blocked).toBe("blocked");
   });
 });
 
 test.describe("Viết, nháp và lưu phiên bản", () => {
   test("gõ tiếng Việt, reload, khôi phục nháp; lưu phiên bản rồi reload không còn nháp", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const c = await chapterByNumber(page, 5);
     await openChapter(page, c.id);
     await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "synced");
@@ -59,27 +56,8 @@ test.describe("Viết, nháp và lưu phiên bản", () => {
     await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "synced");
   });
 
-  test("lưu thất bại: báo lỗi, không báo thành công, giữ nháp", async ({ page }) => {
-    await login(page);
-    const c = await chapterByNumber(page, 6);
-    await openChapter(page, c.id);
-    await typeAtEnd(page, "\n\nĐoạn mới chưa lưu được.");
-    await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "local");
-    await page.route(`**/api/chapters/${c.id}`, (route) => (route.request().method() === "PUT" ? route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ error: "GitHub không phản hồi" }) }) : route.continue()));
-    await page.getByTestId("save-version").click();
-    await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "error");
-    await expect(page.getByTestId("save-state")).toContainText("Lưu thất bại");
-    await expect(page.getByTestId("save-state")).toContainText("Nháp vẫn an toàn");
-    await expect(page.getByText(/Đã lưu phiên bản/)).toHaveCount(0);
-    await page.unroute(`**/api/chapters/${c.id}`);
-    expect((await readChapter(page, c.id)).doc.body).not.toContain("Đoạn mới chưa lưu được");
-    await page.reload();
-    await expect(page.getByTestId("draft-restored")).toBeVisible();
-    await expect(page.getByTestId("editor-content")).toContainText("Đoạn mới chưa lưu được.");
-  });
-
   test("đổi tên và chuyển Act không đổi ID", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const s = await snapshot(page);
     const c = s.chapters.find((x) => x.number === 7)!;
     await openChapter(page, c.id);
@@ -96,7 +74,7 @@ test.describe("Viết, nháp và lưu phiên bản", () => {
   });
 
   test("chế độ đọc và tìm trong chương", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const c = await chapterByNumber(page, 10);
     await openChapter(page, c.id);
     await page.getByTestId("toggle-search").click();
@@ -110,14 +88,13 @@ test.describe("Viết, nháp và lưu phiên bản", () => {
 
 test.describe("Xung đột", () => {
   test("phát hiện bản mới từ bên ngoài, không ghi đè nháp", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const c = await chapterByNumber(page, 20);
     await openChapter(page, c.id);
     await typeAtEnd(page, "\n\nTác giả viết thêm đoạn này.");
     await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "local");
     // agent (mô phỏng) sửa thẳng bản chính
-    const r = await page.request.post("/api/demo/agent", { data: { action: "edit-main", chapterId: c.id } });
-    expect(r.ok()).toBeTruthy();
+    await call(page, "POST", "/api/demo/agent", { action: "edit-main", chapterId: c.id });
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await expect(page.getByTestId("conflict-banner")).toBeVisible();
     await expect(page.getByTestId("conflict-banner")).toContainText("thay đổi ở nơi khác");
@@ -137,24 +114,24 @@ test.describe("Xung đột", () => {
     await page.getByTestId("save-version").click();
     await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "synced");
     expect((await readChapter(page, c.id)).doc.body).toContain("Tác giả viết thêm đoạn này.");
-    const hist = await (await page.request.get(`/api/chapters/${c.id}/history`)).json();
+    const hist = await call<{ versions: { message: string }[] }>(page, "GET", `/api/chapters/${c.id}/history`);
     expect(hist.versions.map((v: { message: string }) => v.message).join("\n")).toContain("Agent mô phỏng sửa trực tiếp bản chính");
   });
 
   test("nháp cũ sau reload khi bản trên kho đã đổi → yêu cầu xử lý", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const c = await chapterByNumber(page, 21);
     await openChapter(page, c.id);
     await typeAtEnd(page, "\n\nNháp offline.");
     await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "local");
-    await page.request.post("/api/demo/agent", { data: { action: "edit-main", chapterId: c.id } });
+    await call(page, "POST", "/api/demo/agent", { action: "edit-main", chapterId: c.id });
     await page.reload();
     await expect(page.getByTestId("conflict-banner")).toContainText("kể từ khi bạn bắt đầu nháp");
     await expect(page.getByTestId("editor-content")).toContainText("Nháp offline.");
   });
 
   test("hai tab cùng sửa một chương: không âm thầm ghi đè", async ({ page, context }) => {
-    await login(page);
+    await useDemo(page);
     const c = await chapterByNumber(page, 22);
     await openChapter(page, c.id);
     const other = await context.newPage();
@@ -179,14 +156,14 @@ test.describe("Xung đột", () => {
   });
 
   test("agent và tác giả cùng sửa một chương → đề xuất báo xung đột, không cho nhập", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const c = await chapterByNumber(page, 30);
-    const p = await (await page.request.post("/api/demo/agent", { data: { action: "propose", chapterIds: [c.id] } })).json();
+    const p = await call<{ number: number }>(page, "POST", "/api/demo/agent", { action: "propose", chapterIds: [c.id] });
     await openChapter(page, c.id);
     await typeAtEnd(page, "\n\nTác giả sửa cùng chương.");
     await page.getByTestId("save-version").click();
     await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "synced");
-    await page.goto(`/proposals/${p.number}`);
+    await go(page, `/proposal/?n=${p.number}`);
     await expect(page.getByTestId("conflict")).toBeVisible();
     await expect(page.getByTestId("conflict")).toContainText(`content/chapters/${c.id}.md`);
     await expect(page.getByTestId("accept")).toBeDisabled();
@@ -195,12 +172,12 @@ test.describe("Xung đột", () => {
 
 test.describe("Review đề xuất", () => {
   test("xem diff, bình luận, chấp nhận và nhập vào bản chính", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const c = await chapterByNumber(page, 40);
-    const p = await (await page.request.post("/api/demo/agent", { data: { action: "propose", chapterIds: [c.id], touchCanon: true } })).json();
-    await page.goto("/proposals");
+    const p = await call<{ number: number }>(page, "POST", "/api/demo/agent", { action: "propose", chapterIds: [c.id], touchCanon: true });
+    await go(page, "/proposals/");
     await expect(page.getByTestId("proposal-list")).toContainText(`#${p.number}`);
-    await page.goto(`/proposals/${p.number}`);
+    await go(page, `/proposal/?n=${p.number}`);
     await expect(page.getByTestId("diff-inline")).toContainText("Một cơn gió lạnh lùa qua khe cửa");
     await expect(page.locator(".diff-p.add")).toHaveCount(1);
     await page.getByTestId("comment-input").fill("Giữ câu này, rất hợp không khí.");
@@ -213,12 +190,12 @@ test.describe("Review đề xuất", () => {
   });
 
   test("đề xuất thay đổi sau khi mở review → không nhập phiên bản chưa xem", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const c = await chapterByNumber(page, 41);
-    const p = await (await page.request.post("/api/demo/agent", { data: { action: "propose", chapterIds: [c.id] } })).json();
-    await page.goto(`/proposals/${p.number}`);
+    const p = await call<{ number: number }>(page, "POST", "/api/demo/agent", { action: "propose", chapterIds: [c.id] });
+    await go(page, `/proposal/?n=${p.number}`);
     await expect(page.getByTestId("accept")).toBeEnabled();
-    await page.request.post("/api/demo/agent", { data: { action: "push-to-proposal", number: p.number } });
+    await call(page, "POST", "/api/demo/agent", { action: "push-to-proposal", number: p.number });
     await page.getByTestId("accept").click();
     await page.getByTestId("confirm-accept").click();
     await expect(page.getByTestId("head-moved")).toBeVisible();
@@ -226,29 +203,28 @@ test.describe("Review đề xuất", () => {
     expect((await readChapter(page, c.id)).doc.body).not.toContain("agent mô phỏng");
   });
 
-  test("tự approve đề xuất của chính mình bị GitHub (mô phỏng) từ chối; yêu cầu sửa được gửi", async ({ page }) => {
-    await login(page);
-    const r = await page.request.post("/api/proposals/1/review", { data: { event: "REQUEST_CHANGES", body: "Đừng đổi giọng văn của Puna." } });
-    expect(r.ok()).toBeTruthy();
-    expect((await r.json()).delivered).toBe("review");
+  test("yêu cầu sửa gửi thành review chính thức khi tác giả PR là agent", async ({ page }) => {
+    await useDemo(page);
+    const r = await call<{ delivered: string }>(page, "POST", "/api/proposals/1/review", { event: "REQUEST_CHANGES", body: "Đừng đổi giọng văn của Puna." });
+    expect(r.delivered).toBe("review");
   });
 });
 
 test.describe("Lịch sử và phục hồi", () => {
   test("phục hồi Ch10–11 về bản cũ, giữ Ch8–9 và canon", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const s = await snapshot(page);
     const [c8, c9, c10, c11] = [8, 9, 10, 11].map((n) => s.chapters.find((c) => c.number === n)!);
     const body8 = (await readChapter(page, c8.id)).doc.body;
     const body9 = (await readChapter(page, c9.id)).doc.body;
-    const canon = await (await page.request.get("/api/file?path=content/canon/world/kiem-tro.md")).json();
-    const hist = await (await page.request.get("/api/history?page=1")).json();
-    const init = hist.commits.find((x: { message: string }) => x.message.startsWith("Khởi tạo"));
+    const canon = await call<{ content: string }>(page, "GET", "/api/file?path=content/canon/world/kiem-tro.md");
+    const hist = await call<{ commits: { sha: string; message: string }[] }>(page, "GET", "/api/history?page=1");
+    const init = hist.commits.find((x) => x.message.startsWith("Khởi tạo"))!;
     const old10 = (await readChapter(page, c10.id, init.sha)).doc.body;
     const old11 = (await readChapter(page, c11.id, init.sha)).doc.body;
     expect((await readChapter(page, c10.id)).doc.body).not.toBe(old10);
 
-    await page.goto(`/history?sha=${init.sha}`);
+    await go(page, `/history/?sha=${init.sha}`);
     await page.getByTestId("restore-from-commit").click();
     const cands = page.getByTestId("restore-candidate");
     await expect(cands.filter({ hasText: `Ch 10 ·` })).toBeVisible();
@@ -264,16 +240,16 @@ test.describe("Lịch sử và phục hồi", () => {
     expect((await readChapter(page, c11.id)).doc.body).toBe(old11);
     expect((await readChapter(page, c8.id)).doc.body).toBe(body8);
     expect((await readChapter(page, c9.id)).doc.body).toBe(body9);
-    const canonAfter = await (await page.request.get("/api/file?path=content/canon/world/kiem-tro.md")).json();
+    const canonAfter = await call<{ content: string }>(page, "GET", "/api/file?path=content/canon/world/kiem-tro.md");
     expect(canonAfter.content).toBe(canon.content);
     // lịch sử không bị viết lại
-    const hist2 = await (await page.request.get("/api/history?page=1")).json();
+    const hist2 = await call<{ commits: { message: string }[] }>(page, "GET", "/api/history?page=1");
     expect(hist2.commits.length).toBe(hist.commits.length + 1);
     expect(hist2.commits[0].message).toContain("Phục hồi");
   });
 
   test("phục hồi một chương từ panel phiên bản, có xem trước", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const c = await chapterByNumber(page, 12);
     const original = (await readChapter(page, c.id)).doc.body;
     await openChapter(page, c.id);
@@ -289,36 +265,9 @@ test.describe("Lịch sử và phục hồi", () => {
   });
 });
 
-test.describe("Hiệu năng điều hướng", () => {
-  test("điều hướng 200 chương mà không tải toàn bộ nội dung", async ({ page }) => {
-    await login(page);
-    const chapterGets: string[] = [];
-    let projectBody = "";
-    page.on("response", async (r) => {
-      const u = new URL(r.url());
-      if (/^\/api\/chapters\/[^/]+$/.test(u.pathname) && r.request().method() === "GET") chapterGets.push(u.pathname);
-      if (u.pathname === "/api/project") projectBody = await r.text().catch(() => projectBody);
-    });
-    await page.goto("/library");
-    await expect(page.getByTestId("chapter-tree").locator(".tree-ch")).toHaveCount(200);
-    expect(chapterGets).toHaveLength(0);
-    expect(projectBody.length).toBeGreaterThan(1000);
-    expect(projectBody).not.toContain("Mưa không ngừng suốt buổi sáng");
-    const snap = await snapshot(page);
-    for (const n of [1, 100, 200]) {
-      const target = snap.chapters[n - 1];
-      await page.getByTestId("chapter-tree").locator(".tree-ch").nth(n - 1).click();
-      await expect(page).toHaveURL(new RegExp(`/chapters/${target.id}$`));
-      await expect(page.getByTestId("chapter-title")).toHaveValue(target.title);
-    }
-    expect(new Set(chapterGets).size).toBe(3);
-    expect(chapterGets).toHaveLength(3); // mỗi chương đúng một lần tải, không tải chương nào khác
-  });
-});
-
 test.describe("Nhập & xuất", () => {
   test("nhập văn bản: xem trước, cảnh báo trùng, giữ nguyên văn", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const src = [
       "Ghi chú đầu file không phải chương.",
       "",
@@ -339,7 +288,7 @@ test.describe("Nhập & xuất", () => {
       "",
       "Không nên ghi đè.",
     ].join("\r\n");
-    await page.goto("/import");
+    await go(page, "/import/");
     await page.getByText("…hoặc dán văn bản").click();
     await page.getByTestId("import-paste").fill(src);
     await page.getByTestId("import-paste-load").click();
@@ -361,22 +310,24 @@ test.describe("Nhập & xuất", () => {
   });
 
   test("xuất một chương và toàn bộ bản thảo", async ({ page }) => {
-    await login(page);
+    await useDemo(page);
     const c = await chapterByNumber(page, 10);
-    const one = await page.request.get(`/api/export?chapter=${c.id}`);
-    expect(one.headers()["content-type"]).toContain("text/markdown");
-    expect(await one.text()).toContain("## Ch 10 ·");
-    const all = await page.request.get("/api/export");
-    const text = await all.text();
+    await openChapter(page, c.id);
+    const [d1] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Xuất .md" }).click()]);
+    const fs = await import("node:fs");
+    expect(fs.readFileSync((await d1.path())!, "utf8")).toContain("## Ch 10 ·");
+    await go(page, "/import/");
+    const [d2] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Tải toàn bộ bản thảo (.md)" }).click()]);
+    const text = fs.readFileSync((await d2.path())!, "utf8");
     expect(text).toContain("DỮ LIỆU DEMO");
-    expect(text.match(/^## Ch \d+ ·/gm)?.length).toBeGreaterThanOrEqual(200);
+    expect(text.match(/^## Ch \d+ ·/gm)?.length).toBe(200);
   });
 });
 
 test.describe("Gói tài liệu & giao diện", () => {
   test("tạo manifest chỉ gồm phạm vi đã chọn, báo tóm tắt cũ", async ({ page }) => {
-    await login(page);
-    await page.goto("/context");
+    await useDemo(page);
+    await go(page, "/context/");
     await page.getByTestId("pack-range").fill("10-11");
     await page.getByTestId("pack-build").click();
     const m = JSON.parse((await page.getByTestId("pack-manifest").textContent())!);
@@ -391,8 +342,8 @@ test.describe("Gói tài liệu & giao diện", () => {
   });
 
   test("chuyển sáng/tối", async ({ page }) => {
-    await login(page);
-    await page.goto("/");
+    await useDemo(page);
+    await go(page, "/");
     await page.getByTestId("theme-toggle").click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await page.getByTestId("theme-toggle").click();

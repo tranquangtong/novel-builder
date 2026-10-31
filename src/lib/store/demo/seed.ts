@@ -1,15 +1,14 @@
-import fs from "node:fs";
-import path from "node:path";
 import { serializeChapter } from "../../domain/chapter";
 import { serializeFrontmatter } from "../../domain/frontmatter";
 import { gitBlobSha } from "../../domain/gitsha";
 import { newId } from "../../domain/ids";
 import { INDEX_FILE, PROJECT_FILE, actPath, chapterPath, summaryPath } from "../../domain/paths";
 import type { ChapterDoc } from "../../domain/types";
-import { ManuscriptService, serializeIndex } from "../../server/service";
+import { ManuscriptService, serializeIndex } from "../../core/service";
 import { countWords } from "../../domain/wordcount";
 import { DEMO_AGENT, DemoStore } from "./demo-store";
-import { MiniGit } from "./minigit";
+import type { MiniGit } from "./minigit";
+import { AGENTS_MD } from "../../domain/agents-md";
 
 /**
  * DỮ LIỆU DEMO — 200 chương ngắn để thử danh sách, điều hướng, review và phục hồi.
@@ -107,7 +106,6 @@ export async function seedDemo(git: MiniGit): Promise<SeedInfo> {
     for (let i = 0; i < 10; i++) b[i] = Math.floor(rand() * 256);
     return b;
   };
-  git.ensureDirs();
 
   const files: Record<string, string> = {};
   files[PROJECT_FILE] = JSON.stringify({
@@ -117,8 +115,7 @@ export async function seedDemo(git: MiniGit): Promise<SeedInfo> {
     word_target: { min: 2500, max: 3000 },
     demo_data: true,
   }, null, 2) + "\n";
-  const agentsMd = path.join(process.cwd(), "templates/manuscript/AGENTS.md");
-  files["AGENTS.md"] = fs.existsSync(agentsMd) ? fs.readFileSync(agentsMd, "utf8") : "# AGENTS.md\n";
+  files["AGENTS.md"] = AGENTS_MD;
 
   const actIds = DEMO_ACTS.map(() => newId("act", idRand));
   DEMO_ACTS.forEach((a, i) => {
@@ -236,10 +233,10 @@ export async function seedDemo(git: MiniGit): Promise<SeedInfo> {
   );
 
   const tree: Record<string, string> = {};
-  for (const [p, c] of Object.entries(files)) tree[p] = git.writeBlob(c);
+  for (const [p, c] of Object.entries(files)) tree[p] = await git.writeBlob(c);
   const t0 = Date.now() - 3 * 24 * 3600 * 1000;
-  const init = git.writeCommit({ tree, parents: [], message: "Khởi tạo cấu trúc bản thảo và DỮ LIỆU DEMO (200 chương)", author: "tac-gia-demo", date: new Date(t0).toISOString() });
-  git.writeState({ refs: { main: init.sha }, pulls: [] });
+  const init = await git.writeCommit({ tree, parents: [], message: "Khởi tạo cấu trúc bản thảo và DỮ LIỆU DEMO (200 chương)", author: "tac-gia-demo", date: new Date(t0).toISOString() });
+  await git.writeState({ refs: { main: init.sha }, pulls: [] });
 
   const store = new DemoStore(git);
   const svc = new ManuscriptService(store);

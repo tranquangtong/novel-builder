@@ -1,53 +1,38 @@
-# Triển khai mà không làm lộ bản thảo
+# Triển khai trên GitHub Pages mà không làm lộ bản thảo
 
-## Nguyên tắc
+## Mô hình
 
-- **Không dùng GitHub Pages** hay hosting tĩnh: chúng không có backend để giữ secret và không bảo vệ được nội dung riêng tư. Ứng dụng cần một tiến trình **Node.js** (`next start`) hoặc một nền tảng chạy Next.js server/serverless.
-- Bản thảo **không bao giờ nằm trong build**. Mọi route đều động (`ƒ` trong `next build`), dữ liệu chỉ được đọc lúc chạy qua API có kiểm tra phiên đăng nhập. Không có `generateStaticParams`, không có nội dung trong `public/`.
-- Repo **mã nguồn ứng dụng** (repo này) và repo **bản thảo** nên tách riêng. Repo bản thảo phải là private.
-- Secret chỉ đặt trong biến môi trường của nền tảng triển khai, không commit vào repo. `.env*` (trừ `.env.example`) đã nằm trong `.gitignore`.
+- **Repo `novel-builder` (public)**: mã của trang. GitHub Actions build (Next.js static export) và deploy lên GitHub Pages. Bản build **không chứa bản thảo**; dữ liệu demo trong mã là văn bản giả, có nhãn rõ.
+- **Repo bản thảo (private)**: `content/…` và `AGENTS.md`. Chỉ được đọc/ghi bằng token có quyền trên repo này.
+- **Không có máy chủ.** Trình duyệt gọi thẳng `https://api.github.com`. Tài liệu chính thức của GitHub ghi: *"The REST API supports cross-origin resource sharing (CORS) for AJAX requests from any origin."*
 
-## Lựa chọn
+GitHub Pages không có backend và không bảo vệ được nội dung riêng tư; trang Pages luôn public. Vì vậy bản thảo **không bao giờ** nằm trong repo `novel-builder` hay trong bản build.
 
-### A. Vercel (hoặc nền tảng tương tự hỗ trợ Next.js)
+## Vì sao dùng fine-grained personal access token
 
-1. Import repo mã nguồn. Framework: Next.js.
-2. Environment Variables: điền như `.env.example` với `DATA_MODE=github`, `APP_URL=https://<domain>`, và `SESSION_SECRET` mạnh.
-3. Cập nhật Callback URL của GitHub App thành `https://<domain>/api/auth/github/callback`.
-4. Nên bật thêm lớp bảo vệ của nền tảng (ví dụ Vercel Deployment Protection) cho các preview deployment.
+Đăng nhập kiểu OAuth/GitHub App cần bước đổi `code` lấy token tại `github.com/login/oauth/access_token`. Bước này không hỗ trợ CORS (README của `@octokit/auth-app` cũng ghi *"The OAuth APIs to create user-to-server tokens cannot be used because they do not have CORS enabled"*), nên phải có máy chủ giữ client secret. Một trang tĩnh thuần không làm được, nên dùng **fine-grained PAT**:
 
-> Chế độ demo lưu trên đĩa (`.demo-data`), **không** dùng được trên serverless. Chỉ dùng chế độ GitHub ở đây.
+- Chỉ chọn **một repo bản thảo** (Only select repositories).
+- Quyền: **Contents: Read and write**, **Pull requests: Read and write** (Metadata: Read tự có).
+- Có thời hạn (link tạo token điền sẵn 180 ngày, đổi được).
 
-### B. Máy chủ/VPS hoặc container
+## Token được bảo vệ thế nào
 
-```bash
-npm ci
-```
+- Lưu trong `sessionStorage` (mất khi đóng tab), hoặc `localStorage` nếu bạn tick "Ghi nhớ trên thiết bị này".
+- **Content-Security-Policy** (thẻ meta): `connect-src 'self' https://api.github.com`. Trang không thể gửi dữ liệu tới địa chỉ nào khác; có E2E kiểm tra `fetch("https://example.com")` bị chặn.
+- Không có script bên thứ ba: font được tự host, không dùng analytics hay CDN ngoài.
+- Markdown render **không** cho phép HTML thô, nên nội dung do agent viết không chèn được script.
+- `<meta name="referrer" content="no-referrer">`.
+- Rủi ro còn lại: nếu chính trang bị chèn mã độc (ví dụ ai đó có quyền push vào `novel-builder`), mã đó có thể đọc token. Hãy giữ quyền push repo `novel-builder` cho riêng bạn, và xem lại các PR vào repo này.
 
-```bash
-npm run build
-```
+## Danh sách kiểm tra
 
-```bash
-NODE_ENV=production PORT=3000 npm start
-```
+- [ ] Settings → Pages → Source: **GitHub Actions**.
+- [ ] Repo bản thảo là **private**. Trang Kết nối báo ✗ nếu repo public.
+- [ ] Token chỉ chọn repo bản thảo, đúng hai quyền ở trên.
+- [ ] Chỉ tick "Ghi nhớ" trên máy riêng; thu hồi token khi mất máy.
+- [ ] Workflow **Kiểm tra và triển khai GitHub Pages** xanh trước khi dùng bản mới.
 
-Đặt sau reverse proxy có HTTPS (Caddy/Nginx), vì cookie phiên dùng cờ `Secure` ở production. Chỉ khi thử nội bộ không có HTTPS mới đặt `ALLOW_INSECURE_COOKIE=1`.
+## Nhánh và deploy
 
-## Danh sách kiểm tra trước khi dùng thật
-
-- [ ] Repo bản thảo **private** (mục "Kiểm tra kết nối thật" cảnh báo nếu không).
-- [ ] App chỉ được cài vào **repo bản thảo**, với đúng quyền Contents RW + Pull requests RW.
-- [ ] `ALLOWED_GITHUB_LOGIN` và `ALLOWED_GITHUB_USER_ID` đã đặt.
-- [ ] `SESSION_SECRET` ≥ 32 ký tự ngẫu nhiên. Ở chế độ GitHub production, nếu thiếu thì mọi phiên bị từ chối.
-- [ ] `DATA_MODE=github`. Ở production, chế độ demo bắt buộc có `DEMO_PASSCODE` riêng.
-- [ ] HTTPS.
-- [ ] Đăng xuất rồi mở `/api/project`: phải nhận **401**.
-
-## Bảo mật đã có trong mã
-
-- `guarded()` kiểm tra phiên cho **mọi** API nội dung. Các request ghi phải có `Content-Type: application/json` và cùng origin (chống CSRF, thêm vào SameSite=Lax).
-- Đường dẫn file được kiểm tra chặt (`content/…`, không `..`), có test chống path traversal.
-- Markdown được render **không** cho phép HTML thô (react-markdown mặc định), an toàn với nội dung do agent viết.
-- Header: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `X-Robots-Tag: noindex`. Mọi API trả `Cache-Control: private, no-store`.
-- Trang trạng thái chỉ cho biết biến môi trường nào **đã đặt**, không bao giờ hiển thị giá trị.
+Workflow chạy kiểm tra trên **mọi nhánh**, nhưng chỉ **nhánh mặc định** của repo mới được deploy. Hiện nhánh mặc định là nhánh đầu tiên được push. Nếu sau này đổi sang `main`: Settings → General → Default branch, và kiểm tra Settings → Environments → `github-pages` cho phép nhánh đó.

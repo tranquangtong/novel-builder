@@ -1,16 +1,12 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { MiniGit } from "@/lib/store/demo/minigit";
+import { MemoryStorage, MiniGit } from "@/lib/store/demo/minigit";
 import { DemoStore } from "@/lib/store/demo/demo-store";
 import { seedDemo } from "@/lib/store/demo/seed";
-import { ManuscriptService } from "@/lib/server/service";
+import { ManuscriptService } from "@/lib/core/service";
 
 export async function freshDemo() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nb-demo-"));
-  const git = new MiniGit(dir);
+  const git = new MiniGit(new MemoryStorage());
   const seed = await seedDemo(git);
   const store = new DemoStore(git);
   const svc = new ManuscriptService(store);
-  return { dir, git, seed, store, svc };
+  return { git, seed, store, svc };
 }

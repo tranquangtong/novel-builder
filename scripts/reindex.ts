@@ -8,7 +8,7 @@ import path from "node:path";
 import { parseChapter } from "../src/lib/domain/chapter";
 import { gitBlobSha } from "../src/lib/domain/gitsha";
 import { countWords } from "../src/lib/domain/wordcount";
-import { serializeIndex } from "../src/lib/server/service";
+import { serializeIndex } from "../src/lib/core/service";
 
 const root = path.resolve(process.argv[2] ?? ".");
 const dir = path.join(root, "content/chapters");

@@ -1,4 +1,5 @@
 "use client";
+import { chapterHref } from "@/lib/client/links";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -88,7 +89,7 @@ export default function LibraryPage() {
                     <tr key={c.id}>
                       <td className="num muted">{c.number}</td>
                       <td>
-                        <Link href={`/chapters/${c.id}`} style={{ textDecoration: "none", fontWeight: 500 }}>{c.title}</Link>
+                        <Link href={chapterHref(c.id)} style={{ textDecoration: "none", fontWeight: 500 }}>{c.title}</Link>
                         {drafts.has(c.id) && <span className="chip accent" style={{ marginLeft: 8 }}>nháp chưa lưu</span>}
                       </td>
                       <td className="small">{c.pov ?? <span className="muted">—</span>}</td>
@@ -115,7 +116,7 @@ export default function LibraryPage() {
             try {
               const r = await api<{ id: string }>("/api/chapters", { body: newCh });
               await qc.invalidateQueries({ queryKey: ["project"] });
-              router.push(`/chapters/${r.id}`);
+              router.push(chapterHref(r.id));
             } catch (e) {
               toast(`Không tạo được chương: ${e instanceof Error ? e.message : e}`, "error");
             } finally {

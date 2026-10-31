@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 import type { ProjectSnapshot } from "../domain/types";
 
-export function useProject() {
-  return useQuery({ queryKey: ["project"], queryFn: () => api<ProjectSnapshot>("/api/project"), staleTime: 10_000, refetchOnWindowFocus: true });
+export function useProject(enabled = true) {
+  return useQuery({ queryKey: ["project"], enabled, queryFn: () => api<ProjectSnapshot>("/api/project"), staleTime: 10_000, refetchOnWindowFocus: true });
 }
 
 export function useMe() {

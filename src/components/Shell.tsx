@@ -1,6 +1,7 @@
 "use client";
+import { chapterHref } from "@/lib/client/links";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useProject } from "@/lib/client/hooks";
@@ -8,6 +9,7 @@ import { api } from "@/lib/client/api";
 import { listDrafts, tabChannel } from "@/lib/client/drafts";
 import type { PullSummary } from "@/lib/domain/types";
 import { ThemeToggle } from "./ThemeToggle";
+import { clearConnection, type Connection } from "@/lib/client/connection";
 
 const NAV = [
   { href: "/", label: "Tổng quan", icon: "◎" },
@@ -42,23 +44,27 @@ export function useLocalDraftIds(repoKey: string | undefined) {
   return ids;
 }
 
-export function Shell({ children, login, name, mode, repoLabel }: { children: React.ReactNode; login: string; name: string; mode: "demo" | "github"; repoLabel: string }) {
+export function Shell({ children, conn }: { children: React.ReactNode; conn: Connection | null }) {
+  const mode = conn?.mode;
+  const repoLabel = !conn ? "chưa kết nối" : conn.mode === "demo" ? "kho demo (trên trình duyệt)" : `${conn.owner}/${conn.repo}`;
+  const connected = !!conn;
   const pathname = usePathname();
   const router = useRouter();
-  const project = useProject();
-  const pulls = useQuery({ queryKey: ["proposals", "open"], queryFn: () => api<{ pulls: PullSummary[] }>("/api/proposals?state=open"), staleTime: 30_000 });
+  const project = useProject(connected);
+  const pulls = useQuery({ queryKey: ["proposals", "open"], enabled: connected, queryFn: () => api<{ pulls: PullSummary[] }>("/api/proposals?state=open"), staleTime: 30_000 });
+  const search = useSearchParams();
   const [filter, setFilter] = useState("");
   const [collapsedActs, setCollapsedActs] = useState<Set<string>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const drafts = useLocalDraftIds(project.data?.repo);
 
   useEffect(() => {
-    const onUnauth = () => router.replace("/login");
+    const onUnauth = () => router.replace("/settings");
     window.addEventListener("nb:unauthenticated", onUnauth);
     return () => window.removeEventListener("nb:unauthenticated", onUnauth);
   }, [router]);
 
-  const activeId = /^\/chapters\/([^/]+)/.exec(pathname)?.[1];
+  const activeId = pathname.startsWith("/chapter") ? search.get("id") ?? undefined : undefined;
   const groups = useMemo(() => {
     const snap = project.data;
     if (!snap) return [];
@@ -72,7 +78,7 @@ export function Shell({ children, login, name, mode, repoLabel }: { children: Re
   }, [project.data, filter]);
 
   const openCount = pulls.data?.pulls.filter((p) => p.contentRelated).length ?? 0;
-  const isDemo = mode === "demo" || project.data?.project.demo_data;
+  const isDemo = mode === "demo" || !!project.data?.project.demo_data;
 
   return (
     <div className={`shell ${sidebarOpen ? "sidebar-open" : ""}`}>
@@ -81,10 +87,10 @@ export function Shell({ children, login, name, mode, repoLabel }: { children: Re
           <div className="brand">
             <span className="brand-title">{project.data?.project.title ?? "The Last Miracle"}</span>
           </div>
-          <div className="brand-sub">{repoLabel} · {project.data ? `${project.data.chapters.length} chương` : "đang tải…"}</div>
+          <div className="brand-sub">{repoLabel}{connected ? ` · ${project.data ? `${project.data.chapters.length} chương` : "đang tải…"}` : ""}</div>
         </div>
         <nav className="nav">
-          {NAV.map((n) => {
+          {NAV.filter((n) => connected || n.href === "/settings").map((n) => {
             const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
             return (
               <Link key={n.href} href={n.href} className={active ? "active" : ""} onClick={() => setSidebarOpen(false)}>
@@ -95,6 +101,7 @@ export function Shell({ children, login, name, mode, repoLabel }: { children: Re
             );
           })}
         </nav>
+        {connected && (
         <div className="tree">
           <div className="tree-filter">
             <input className="input" placeholder="Lọc chương (tên hoặc số)…" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Lọc chương" />
@@ -120,7 +127,7 @@ export function Shell({ children, login, name, mode, repoLabel }: { children: Re
                 </button>
                 {!collapsedActs.has(g.id) &&
                   g.chapters.map((c) => (
-                    <Link key={c.id} href={`/chapters/${c.id}`} className={`tree-ch ${activeId === c.id ? "active" : ""}`} title={`${c.title} · ${c.words} chữ`} onClick={() => setSidebarOpen(false)}>
+                    <Link key={c.id} href={chapterHref(c.id)} className={`tree-ch ${activeId === c.id ? "active" : ""}`} title={`${c.title} · ${c.words} chữ`} onClick={() => setSidebarOpen(false)}>
                       <span className="n">{c.number}</span>
                       <span className="t">{c.title}</span>
                       <span className={`dot ${c.status} ${drafts.has(c.id) ? "local" : ""}`} title={drafts.has(c.id) ? "Có nháp chưa lưu trên thiết bị này" : c.status} />
@@ -130,25 +137,29 @@ export function Shell({ children, login, name, mode, repoLabel }: { children: Re
             ))}
           </div>
         </div>
+        )}
         <div className="sidebar-foot">
-          <span className="who" title={login}>{name}</span>
+          <span className="who" title={repoLabel}>{conn?.mode === "github" ? conn.owner : conn ? "Demo" : "—"}</span>
           <ThemeToggle />
-          <button
-            className="btn ghost sm"
-            onClick={async () => {
-              await api("/api/auth/logout", { body: {} }).catch(() => {});
-              router.replace("/login");
-              router.refresh();
-            }}
-          >
-            Đăng xuất
-          </button>
+          {connected && (
+            <button
+              className="btn ghost sm"
+              title="Xóa token khỏi trình duyệt này"
+              onClick={() => {
+                if (!window.confirm("Ngắt kết nối và xóa token khỏi trình duyệt này? Nháp chưa lưu vẫn được giữ trên thiết bị.")) return;
+                clearConnection();
+                router.replace("/settings");
+              }}
+            >
+              Ngắt kết nối
+            </button>
+          )}
         </div>
       </aside>
       <div className="main">
         {isDemo && (
           <div className="demo-ribbon" data-testid="demo-ribbon">
-            DỮ LIỆU DEMO — không phải bản thảo thật · không kết nối GitHub · dữ liệu nằm trong thư mục .demo-data của máy chủ
+            DỮ LIỆU DEMO — không phải bản thảo thật · không kết nối GitHub · dữ liệu chỉ nằm trong trình duyệt này
           </div>
         )}
         <button className="btn ghost sm mobile-menu" style={{ display: "none" }} onClick={() => setSidebarOpen((v) => !v)}>☰</button>

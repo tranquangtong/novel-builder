@@ -1,71 +1,60 @@
 # Kết quả kiểm chứng
 
-Môi trường: Node 22.23, Next.js 16.4.2, React 19.2.9, Chromium (Playwright 1.63). Ngày 31/10/2026.
+Phiên bản: trang tĩnh trên GitHub Pages (Next.js 16.4.2 static export, React 19.2.9). Ngày 31/10/2026, Node 22, Chromium (Playwright 1.63).
 
 ## Đã chạy thật
 
-| Kiểm tra | Lệnh | Kết quả |
-|---|---|---|
-| Lint | `npm run lint` | sạch |
-| Typecheck | `npm run typecheck` | sạch |
-| Unit/integration | `npm test` | **21/21** qua |
-| Build production | `npm run build` | thành công. Mọi trang và API là `ƒ (Dynamic)`, không route nội dung nào được prerender tĩnh |
-| E2E (build production, chế độ demo) | `npm run test:e2e` | **20/20** qua, chạy 2 lần liên tiếp |
-
-### Các luồng có nguy cơ mất dữ liệu (E2E, `tests/e2e/flows.spec.ts`)
-
-| Luồng | Test kiểm tra |
+| Kiểm tra | Kết quả |
 |---|---|
-| Nhập tiếng Việt, reload, khôi phục nháp | Gõ câu có dấu và ngoặc kép “ ”, đếm chữ cập nhật ngay (+27 chữ, “—” không tính). Sau reload hiện “Đã khôi phục nháp” với đúng nội dung; kho chưa có nội dung đó |
-| Lưu thành công | Trạng thái chuyển “Đã lưu… phiên bản …”; nội dung trên kho khớp; reload không còn nháp |
-| Lưu thất bại | Chặn PUT trả 502: hiện “Lưu thất bại… Nháp vẫn an toàn”, **không** có thông báo thành công, kho không đổi, reload vẫn khôi phục được nháp |
-| Phát hiện phiên bản mới từ bên ngoài | Agent (mô phỏng) sửa bản chính khi tác giả đang có nháp: hiện cảnh báo; bấm lưu bị từ chối (409), bản agent không bị ghi đè; xem được diff; “Giữ nội dung của tôi” rồi lưu thì thành công, bản agent vẫn nằm trong lịch sử |
-| Nháp cũ sau khi kho đổi | Reload khi bản gốc của nháp đã cũ: cảnh báo “kể từ khi bạn bắt đầu nháp”, nháp vẫn hiển thị |
-| Hai tab cùng sửa | Tab B nhận cảnh báo “đang được sửa ở tab khác” và ngừng tự lưu; IndexedDB vẫn giữ nháp tab A |
-| Agent và tác giả cùng sửa một chương | Đề xuất báo xung đột, nêu đúng file, nút “Chấp nhận” bị vô hiệu |
-| Review và merge | Diff hiển thị đoạn thêm; bình luận; chấp nhận thì trạng thái “Đã nhập” và nội dung có trên bản chính |
-| Đề xuất đổi sau khi mở review | Agent đẩy thêm commit, tác giả bấm chấp nhận: bị từ chối (head khác), hiện cảnh báo, **không** nhập |
-| Phục hồi riêng chương | Từ trang Lịch sử: trả Ch10–11 về bản khởi tạo; Ch8–9 và canon Kiếm Tro giữ nguyên từng byte; số commit tăng đúng 1 (không rewrite lịch sử). Từ panel Phiên bản: có xem trước diff rồi phục hồi |
-| Không đọc/ghi khi chưa xác thực | 7 API đọc + PUT/merge trả 401 và không chứa nội dung; trang chuyển về `/login`; sai mã demo trả 401; request ghi từ origin khác trả 403 |
-| Điều hướng 200 chương | Danh sách hiện 200 chương mà **không** có request nội dung chương nào; payload `/api/project` không chứa thân chương; mở 3 chương thì đúng 3 request, mỗi chương một lần |
-| Đổi tên/chuyển Act | ID và đường dẫn file không đổi |
-| Nhập văn bản | Cảnh báo trùng số, chương đã có, nội dung trước chương đầu. Mặc định bỏ qua chương trùng với bản thảo; giữ nguyên khoảng trắng kép, gạch ngang, ngoặc; CRLF thành LF |
-| Xuất | Một chương và toàn bộ bản thảo (≥ 200 tiêu đề chương) |
-| Gói tài liệu | Chỉ chương đích và lân cận; blob sha hợp lệ; đánh dấu tóm tắt đã cũ |
-| Sáng/tối | Chuyển theme; dải DỮ LIỆU DEMO luôn hiển thị |
+| `npm run lint`, `npm run typecheck` | sạch |
+| `npm test` (Vitest) | **25/25** qua |
+| `npm run build` với `NEXT_PUBLIC_BASE_PATH=/novel-builder` | thành công, 11 trang tĩnh trong `out/` |
+| `npm run test:e2e` (Playwright, phục vụ `out/` giống GitHub Pages) | **23/23** qua, chạy 2 lần liên tiếp |
+| Quét `out/` tìm token | chỉ có placeholder `github_pat_…` trong giao diện, không có secret |
+
+Workflow `.github/workflows/pages.yml` chạy lại toàn bộ các bước trên trong GitHub Actions trước khi deploy.
+
+### E2E chế độ GitHub (trang tĩnh ↔ GitHub API giả qua `page.route`)
+
+`tests/e2e/github-mode.spec.ts`:
+- Kết nối bằng token: các bước kiểm tra đều ✓; không tick "Ghi nhớ" thì token **không** nằm trong localStorage.
+- Danh sách **200 chương** chỉ đọc ≤ 6 blob (project, chỉ mục, 4 Act). Mở 3 chương thì đọc đúng 3 blob chương mới.
+- **Mọi** request tới API mang đúng token. **Không** có request nào ra host khác ngoài `api.github.com`.
+- Token sai: không kết nối và không lưu token. Repo public: cảnh báo "ĐANG PUBLIC".
+- Lưu tiếng Việt: lần lưu bị lỗi 502 thì báo lỗi, không báo thành công, nháp còn sau reload. Lưu lại thì thành công, commit có nội dung đúng, đúng một lần `PATCH git/refs`.
+- Agent sửa cùng chương trực tiếp trên GitHub: hiện cảnh báo; lưu bị từ chối; GitHub không bị ghi đè.
+- Vào thẳng URL con dưới `/novel-builder/` hoạt động.
+
+### E2E chế độ demo (kho mini-git trong IndexedDB, mỗi test một kho riêng)
+
+`tests/e2e/flows.spec.ts`:
+- Chưa kết nối thì chỉ vào được trang Kết nối, không có request ra ngoài. CSP chặn `fetch("https://example.com")`.
+- Gõ tiếng Việt, reload, khôi phục nháp; đếm chữ cập nhật ngay; lưu phiên bản; đổi tên/chuyển Act giữ ID; chế độ đọc; tìm trong chương.
+- Thay đổi từ bên ngoài, nháp dựa trên bản cũ, hai tab cùng sửa, agent và tác giả cùng sửa một chương: không ghi đè âm thầm.
+- Review: diff, bình luận, chấp nhận (merge). Đề xuất đổi sau khi mở review thì không nhập.
+- Phục hồi Ch10–11 về bản cũ: Ch8–9 và canon giữ nguyên từng byte, lịch sử chỉ thêm 1 phiên bản. Phục hồi từ panel có xem trước.
+- Nhập văn bản giữ nguyên văn, có cảnh báo; xuất 1 chương và toàn bộ (200 chương); gói tài liệu đánh dấu tóm tắt cũ; sáng/tối.
 
 ### Unit/integration (`tests/unit/`)
 
-- `service.test.ts`: chạy với kho demo. Danh sách 200 chương đọc tối đa 6 blob; lưu tiếng Việt; giữ ID khi đổi tên/Act; từ chối lưu dựa trên bản cũ; tự thử lại khi file khác đổi; phục hồi Ch10–11 giữ Ch8–9 và canon; merge chỉ khi head không đổi; phát hiện xung đột cùng chương; từ chối tự approve.
-- `github-store.test.ts`: **`GitHubStore` chạy với một GitHub REST API giả** (fetch giả dựng trên mini-git), mô phỏng hành vi ghi trong đặc tả OpenAPI chính thức. Kiểm tra: JWT của App → installation token (dùng khóa **PKCS#1** sinh ngẫu nhiên); lưu đúng chuỗi `POST git/trees → POST git/commits → PATCH git/refs (force=false)`; 422 không fast-forward thì thử lại; 409/405 khi merge thành lỗi tương ứng; danh tính bot từ `GET /app`.
-- `domain.test.ts`: đếm chữ; frontmatter giữ nguyên từng byte; git blob sha khớp `git hash-object`; nhận diện chương khi nhập; diff theo đoạn; chặn path traversal.
-
-### Kiểm tra giao diện
-
-Đã chụp màn hình và xem bằng mắt các khổ 1440×900 (sáng và tối), 1024×768 và 820×1100: tổng quan, editor (font Literata có dấu tiếng Việt), cảnh báo xung đột, review đề xuất, canon/kiến thức nhân vật, lịch sử. Console trình duyệt không có lỗi trong các luồng trên.
+- `GitHubStore` với GitHub API giả: chuỗi `POST git/trees → POST git/commits → PATCH git/refs (force=false)`; 422 không fast-forward thì thử lại; file đã đổi thì báo xung đột; merge 409/405; lỗi 502 khi commit thì nhánh không đổi; token sai thì 401.
+- `ManuscriptService` trên kho demo, SHA-1 thuần JS khớp `node:crypto` và `git hash-object`, đếm chữ, frontmatter giữ nguyên byte, nhập văn bản, diff, path traversal, AGENTS.md đồng bộ với bản mẫu.
 
 ## Đã xác minh bằng tài liệu chính thức
 
-Không truy cập được docs.github.com và nextjs.org từ môi trường này, nên tôi đọc **nguồn** của tài liệu:
+docs.github.com bị chặn từ môi trường phát triển, nên tôi đọc nguồn tài liệu (repo `github/docs`, đặc tả `github/rest-api-description`):
+- CORS: *"The REST API supports cross-origin resource sharing (CORS) for AJAX requests from any origin"* (`content/rest/using-the-rest-api/using-cors-and-jsonp-to-make-cross-origin-requests.md`).
+- Link tạo fine-grained token điền sẵn tham số (`name`, `description`, `contents=write`, `pull_requests=write`, `expires_in`) (`managing-your-personal-access-tokens.md`).
+- `PUT /pulls/{n}/merge` với `sha` (409 khi head khác, 405 khi không merge được); `PATCH /git/refs` với `force=false`; quyền từng endpoint; *"Pull request authors cannot approve their own pull requests"*.
+- README `@octokit/auth-app`: các API OAuth tạo user token không hỗ trợ CORS. Đây là lý do dùng PAT thay vì nút "Đăng nhập với GitHub".
+- `actions/deploy-pages` cần quyền `pages: write` và `id-token: write`. Phiên bản action đã kiểm tra bằng tag mới nhất: checkout v7, setup-node v7, upload-pages-artifact v5, deploy-pages v5.
 
-- `github/rest-api-description` (OpenAPI): `PUT /pulls/{n}/merge` có `sha` (*“SHA that pull request head must match to allow merge”*), 409 khi head không khớp, 405 khi không merge được; `PATCH /git/refs/{ref}` với `force` (*“Leaving this out or setting it to false will make sure you're not overwriting work”*); sự kiện review `APPROVE | REQUEST_CHANGES | COMMENT`.
-- `github/docs` `src/github-apps/data/fpt-2022-11-28/server-to-server-permissions.json`: quyền cho từng endpoint đang dùng (Contents R/W; Pull requests R/W; bình luận PR cần Issues **hoặc** Pull requests write).
-- `github/docs` `data/reusables/repositories/request-changes-tips.md`: *“Pull request authors cannot approve their own pull requests.”*
-- `github/docs` trang *generating-a-user-access-token-for-a-github-app*: tham số `state`, `code_challenge` / `code_challenge_method=S256`, `code_verifier`.
-- `vercel/next.js@v16.4.2` docs: `middleware` đổi tên thành `proxy` (bản này không dùng proxy; kiểm tra phiên nằm trong từng route và layout); cấu hình ESLint flat.
-- README của `@octokit/auth-app` 8.3.1 và mã của `universal-github-app-jwt` (khóa PKCS#1 được tự chuyển trên Node).
+## CHƯA kiểm chứng: cần bạn thao tác
 
-## CHƯA kiểm chứng: cần credentials GitHub thật
+1. **Bật Pages** (Settings → Pages → Source: GitHub Actions), rồi xem workflow deploy thành công.
+2. Tạo repo bản thảo private và token, mở trang → Kết nối: các bước kiểm tra phải ✓.
+3. **Khởi tạo cấu trúc** (hoặc nhờ Claude tạo cấu trúc trong repo), lưu một chương, rồi xem commit trên GitHub.
+4. Nhờ Claude mở một PR sửa chương, rồi duyệt trên trang: chấp nhận, yêu cầu sửa, đóng.
+5. Sửa cùng chương trên github.com rồi lưu từ trang: phải báo xung đột.
 
-Môi trường phát triển không có GitHub App, private key hay repo bản thảo, nên **chưa có lần chạy nào với GitHub thật**. Khi có credentials, hãy làm theo thứ tự:
-
-1. **Kết nối GitHub → Kiểm tra kết nối thật**: tất cả các bước phải ✓, repo phải là private.
-2. Đăng nhập bằng tài khoản khác `ALLOWED_GITHUB_LOGIN`: phải bị từ chối.
-3. Lưu một chương: kiểm tra commit trên GitHub có đúng 2 file (chương + `content/index.json`) và tác giả là bạn.
-4. Sửa cùng chương trên github.com rồi lưu từ ứng dụng: phải báo xung đột và giữ nháp.
-5. Tạo nhánh và PR thủ công hoặc bằng agent, xem trong **Đề xuất**, bình luận, chấp nhận.
-6. Đẩy thêm commit vào PR sau khi mở trang, bấm chấp nhận: phải bị từ chối (409).
-7. Tạo xung đột thật (sửa cùng dòng trên `main`): `mergeable` phải là `false` và nút chấp nhận bị khóa.
-8. Phục hồi hai chương từ một commit cũ: commit mới chỉ chứa hai file đó và chỉ mục.
-
-Những điểm có khả năng khác với mô phỏng: thời gian GitHub tính `mergeable` (có thể `null` vài giây; ứng dụng báo “đang kiểm tra”); quy tắc branch protection; giới hạn tốc độ (secondary rate limits) khi xuất toàn bộ bản thảo (200 lần đọc blob, chạy song song tối đa 8).
+Khác biệt có thể gặp với GitHub thật: `mergeable` có thể là `null` vài giây (trang báo "đang kiểm tra"); giới hạn tốc độ khi xuất toàn bộ bản thảo (khoảng 200 lần đọc blob, chạy song song tối đa 8).

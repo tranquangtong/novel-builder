@@ -1,14 +1,12 @@
 import { Octokit } from "@octokit/rest";
-import { createAppAuth } from "@octokit/auth-app";
 import type { CommitInfo, FileChange, PullComment, PullDetail, PullSummary } from "../../domain/types";
 import { isContentPath } from "../../domain/paths";
 import { HeadChangedError, NotMergeableError, RefMovedError, StoreError, type CommitInput, type RepoStore } from "../types";
-import { LruCache } from "../../server/lru";
+import { LruCache } from "../lru";
 
 export interface GitHubStoreConfig {
-  appId: string;
-  privateKey: string;
-  installationId: string;
+  /** Fine-grained personal access token, chỉ quyền trên repo bản thảo. Chỉ nằm trong trình duyệt của tác giả. */
+  token: string;
   owner: string;
   repo: string;
   branch: string;
@@ -36,8 +34,8 @@ function ghMessage(e: unknown): string {
 }
 
 /**
- * Hiện thực RepoStore trên GitHub REST API bằng installation token của GitHub App.
- * Token chỉ tồn tại ở server (Octokit tự xin và làm mới installation token).
+ * Hiện thực RepoStore trên GitHub REST API, gọi thẳng từ trình duyệt (GitHub REST API hỗ trợ
+ * CORS cho mọi origin) bằng fine-grained personal access token của tác giả.
  *
  * Các endpoint đã đối chiếu với đặc tả OpenAPI chính thức (github/rest-api-description):
  *  - GET  /repos/{o}/{r}/git/ref/{ref}            (Contents: read)
@@ -47,6 +45,7 @@ function ghMessage(e: unknown): string {
  *  - PATCH /repos/{o}/{r}/git/refs/{ref} force=false (Contents: write) — 422/409 nếu không fast-forward
  *  - PUT  /repos/{o}/{r}/pulls/{n}/merge  sha=...  (Contents: write) — 409 nếu head khác sha, 405 nếu không merge được
  *  - POST /repos/{o}/{r}/issues/{n}/comments      (Issues: write HOẶC Pull requests: write)
+ * Quyền cần cho token: Contents read/write, Pull requests read/write (Metadata read tự có).
  *  - POST /repos/{o}/{r}/pulls/{n}/reviews        (Pull requests: write)
  *  - PATCH /repos/{o}/{r}/pulls/{n}               (Pull requests: write)
  */
@@ -70,8 +69,7 @@ export class GitHubStore implements RepoStore {
     this.repoKey = `github:${cfg.owner}/${cfg.repo}`;
     this.defaultBranch = cfg.branch;
     this.octokit = new Octokit({
-      authStrategy: createAppAuth,
-      auth: { appId: cfg.appId, privateKey: cfg.privateKey, installationId: cfg.installationId },
+      auth: cfg.token,
       baseUrl: cfg.baseUrl,
       request: cfg.fetch ? { fetch: cfg.fetch } : undefined,
       userAgent: "the-last-miracle-studio",
@@ -126,7 +124,7 @@ export class GitHubStore implements RepoStore {
     if (hit !== undefined) return hit;
     try {
       const { data } = await this.octokit.git.getBlob({ ...this.r, file_sha: blobSha });
-      const text = data.encoding === "base64" ? Buffer.from(data.content, "base64").toString("utf8") : data.content;
+      const text = data.encoding === "base64" ? decodeBase64Utf8(data.content) : data.content;
       this.blobs.set(blobSha, text);
       return text;
     } catch (e) {
@@ -303,17 +301,11 @@ export class GitHubStore implements RepoStore {
     }
   }
 
-  /** Danh tính của GitHub App (`<slug>[bot]`) — cần JWT của app, không phải installation token. */
+  /** Danh tính của tài khoản sở hữu token. */
   async actorLogin() {
     if (this.actor) return this.actor;
-    const appOctokit = new Octokit({
-      authStrategy: createAppAuth,
-      auth: { appId: this.cfg.appId, privateKey: this.cfg.privateKey },
-      baseUrl: this.cfg.baseUrl,
-      request: this.cfg.fetch ? { fetch: this.cfg.fetch } : undefined,
-    });
-    const { data } = await appOctokit.apps.getAuthenticated();
-    this.actor = `${data?.slug ?? "app"}[bot]`;
+    const { data } = await this.octokit.users.getAuthenticated();
+    this.actor = data.login;
     return this.actor;
   }
 
@@ -321,25 +313,26 @@ export class GitHubStore implements RepoStore {
   async diagnose(): Promise<{ step: string; ok: boolean; detail: string }[]> {
     const out: { step: string; ok: boolean; detail: string }[] = [];
     try {
-      const actor = await this.actorLogin();
-      out.push({ step: "Xác thực GitHub App (JWT)", ok: true, detail: actor });
+      out.push({ step: "Token hợp lệ", ok: true, detail: `đăng nhập là ${await this.actorLogin()}` });
     } catch (e) {
-      out.push({ step: "Xác thực GitHub App (JWT)", ok: false, detail: ghMessage(e) });
+      out.push({ step: "Token hợp lệ", ok: false, detail: ghMessage(e) });
       return out;
     }
     try {
       const { data } = await this.octokit.repos.get(this.r);
-      out.push({ step: "Đọc repository bằng installation token", ok: true, detail: `${data.full_name} · ${data.private ? "private" : "PUBLIC"} · nhánh mặc định ${data.default_branch}` });
-      if (!data.private) out.push({ step: "Repository phải là private", ok: false, detail: "Repository đang public — bản thảo có thể bị lộ" });
+      out.push({ step: "Đọc repository bản thảo", ok: true, detail: `${data.full_name} · nhánh mặc định ${data.default_branch}` });
+      out.push({ step: "Repository là private", ok: data.private, detail: data.private ? "private" : "ĐANG PUBLIC — ai cũng đọc được bản thảo. Hãy chuyển sang private." });
+      const push = !!data.permissions?.push;
+      out.push({ step: "Token có quyền ghi", ok: push, detail: push ? "có" : "không — cần Contents: Read and write" });
     } catch (e) {
-      out.push({ step: "Đọc repository bằng installation token", ok: false, detail: ghMessage(e) });
+      out.push({ step: "Đọc repository bản thảo", ok: false, detail: `${ghMessage(e)} — kiểm tra tên repo và token đã chọn repo này chưa` });
       return out;
     }
     try {
       const head = await this.getBranchHead(this.defaultBranch);
       out.push({ step: `Đọc nhánh ${this.defaultBranch}`, ok: true, detail: head.slice(0, 7) });
       const tree = await this.getTree(head);
-      out.push({ step: "Đọc content/project.json", ok: tree.has("content/project.json"), detail: tree.has("content/project.json") ? "có" : "chưa có — dùng nút Khởi tạo cấu trúc" });
+      out.push({ step: "Có cấu trúc bản thảo (content/project.json)", ok: tree.has("content/project.json"), detail: tree.has("content/project.json") ? "có" : "chưa có — bấm Khởi tạo cấu trúc" });
     } catch (e) {
       out.push({ step: `Đọc nhánh ${this.defaultBranch}`, ok: false, detail: ghMessage(e) });
     }
@@ -347,8 +340,15 @@ export class GitHubStore implements RepoStore {
       await this.octokit.pulls.list({ ...this.r, per_page: 1 });
       out.push({ step: "Đọc pull request", ok: true, detail: "OK" });
     } catch (e) {
-      out.push({ step: "Đọc pull request", ok: false, detail: ghMessage(e) });
+      out.push({ step: "Đọc pull request", ok: false, detail: `${ghMessage(e)} — cần Pull requests: Read and write` });
     }
     return out;
   }
+}
+
+function decodeBase64Utf8(b64: string): string {
+  const bin = atob(b64.replace(/\s/g, ""));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
 }

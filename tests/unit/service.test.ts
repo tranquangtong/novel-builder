@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { freshDemo } from "./helpers";
-import { ConflictError } from "@/lib/server/service";
+import { ConflictError } from "@/lib/core/service";
 import { chapterPath } from "@/lib/domain/paths";
 import { simulateMainEdit, simulateProposal, simulatePushToProposal } from "@/lib/store/demo/agent-sim";
 import { HeadChangedError } from "@/lib/store/types";

@@ -1,4 +1,6 @@
 "use client";
+import { proposalHref } from "@/lib/client/links";
+import { exportMarkdown } from "@/lib/client/local-api";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -275,7 +277,7 @@ export function ChapterEditor({ id }: { id: string }) {
             <button className={`tab ${mode === "write" ? "active" : ""}`} onClick={() => setMode("write")}>Viết</button>
             <button className={`tab ${mode === "read" ? "active" : ""}`} onClick={() => setMode("read")} data-testid="mode-read">Đọc</button>
           </div>
-          <a className="btn sm" href={`/api/export?chapter=${id}`}>Xuất .md</a>
+          <button className="btn sm" onClick={() => void exportMarkdown(id)}>Xuất .md</button>
           <button className="btn sm" onClick={() => setPanel((p) => (p ? null : "info"))} aria-pressed={!!panel}>{panel ? "Ẩn panel" : "Hiện panel"}</button>
           <button className="btn primary" disabled={!loaded || !dirty || saveState.kind === "saving"} onClick={() => void save()} data-testid="save-version" title="Tạo một phiên bản trên kho (Ctrl/⌘+S)">
             {saveState.kind === "saving" ? <><span className="spinner" /> Đang lưu…</> : "Lưu phiên bản"}
@@ -586,7 +588,7 @@ function ReviewPanel({ id }: { id: string }) {
       {pulls.isLoading && <span className="spinner" />}
       {!pulls.isLoading && !related.length && <div className="small muted">Không có đề xuất nào.</div>}
       {related.map((p) => (
-        <Link key={p.number} href={`/proposals/${p.number}`} className="version-item" style={{ textDecoration: "none" }}>
+        <Link key={p.number} href={proposalHref(p.number)} className="version-item" style={{ textDecoration: "none" }}>
           <div><div className="msg">#{p.number} {p.title}</div><div className="muted">{p.author} · {fmtDate(p.updatedAt)}</div></div>
         </Link>
       ))}

@@ -1,4 +1,5 @@
 "use client";
+import { chapterHref, proposalHref } from "@/lib/client/links";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -101,7 +102,7 @@ export default function CanonPage() {
               <div className="card-pad">
                 <div className="pane-label">Đề xuất đang mở có sửa canon</div>
                 {pulls.data?.pulls.filter((p) => p.files.some((x) => x.path.startsWith("content/canon/"))).map((p) => (
-                  <Link key={p.number} href={`/proposals/${p.number}`} className="list-item small">#{p.number} {p.title}</Link>
+                  <Link key={p.number} href={proposalHref(p.number)} className="list-item small">#{p.number} {p.title}</Link>
                 ))}
                 {pulls.data && !pulls.data.pulls.some((p) => p.files.some((x) => x.path.startsWith("content/canon/"))) && <div className="small muted">Không có.</div>}
               </div>
@@ -207,6 +208,6 @@ function NewFile({ prefix, kind, onSave, onCancel }: { prefix: string; kind: str
 
 function ChapterRef({ id, byId }: { id: unknown; byId: Map<string, { id: string; number: number }> }) {
   const c = typeof id === "string" ? byId.get(id) : undefined;
-  if (c) return <Link href={`/chapters/${c.id}`}>Ch {c.number}</Link>;
+  if (c) return <Link href={chapterHref(c.id)}>Ch {c.number}</Link>;
   return id ? <span className="mono small">{String(id)}</span> : <span className="muted">—</span>;
 }

@@ -1,24 +1,18 @@
 import type { NextConfig } from "next";
 
+/**
+ * Xuất tĩnh cho GitHub Pages. Build KHÔNG chứa bản thảo: mọi nội dung được trình duyệt
+ * tải trực tiếp từ repo private qua api.github.com bằng token của tác giả, lúc đang dùng.
+ * NEXT_PUBLIC_BASE_PATH = "/<tên-repo>" khi chạy ở https://<user>.github.io/<tên-repo>/.
+ */
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 const nextConfig: NextConfig = {
-  // Bản thảo private không bao giờ được đưa vào build tĩnh: mọi nội dung đều
-  // được đọc lúc chạy qua API có kiểm tra phiên đăng nhập.
-  // AGENTS.md mẫu được đọc lúc chạy (khởi tạo repo / dữ liệu demo).
-  outputFileTracingIncludes: { "/api/**": ["./templates/**"], "/": ["./templates/**"] },
+  output: "export",
+  basePath,
+  trailingSlash: true,
+  images: { unoptimized: true },
   poweredByHeader: false,
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: [
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "same-origin" },
-          { key: "X-Robots-Tag", value: "noindex, nofollow" },
-        ],
-      },
-    ];
-  },
 };
 
 export default nextConfig;

@@ -1,18 +1,26 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/server/session";
-import { getConfig } from "@/lib/server/config";
+"use client";
+import { Suspense, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useConnection } from "@/lib/client/connection";
 import { Shell } from "@/components/Shell";
 
-export const dynamic = "force-dynamic";
+/**
+ * Trang tĩnh: không có máy chủ kiểm tra phiên. Nội dung chỉ được tải từ GitHub bằng token
+ * của tác giả (GitHub tự kiểm tra quyền). Chưa kết nối thì chỉ vào được trang Kết nối.
+ */
+function Gate({ children }: { children: React.ReactNode }) {
+  const conn = useConnection();
+  const pathname = usePathname();
+  const router = useRouter();
+  const onConnect = pathname === "/settings" || pathname === "/settings/";
+  useEffect(() => {
+    if (conn === null && !onConnect) router.replace("/settings");
+  }, [conn, onConnect, router]);
+  if (conn === undefined) return null;
+  if (conn === null && !onConnect) return null;
+  return <Shell conn={conn}>{children}</Shell>;
+}
 
-/** Mọi trang trong xưởng viết yêu cầu phiên đăng nhập hợp lệ. Nội dung chỉ được tải qua API có kiểm tra. */
-export default async function StudioLayout({ children }: { children: React.ReactNode }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
-  const cfg = getConfig();
-  return (
-    <Shell login={session.login} name={session.name ?? session.login} mode={cfg.mode} repoLabel={cfg.github ? `${cfg.github.owner}/${cfg.github.repo}` : "kho demo"}>
-      {children}
-    </Shell>
-  );
+export default function StudioLayout({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={null}><Gate>{children}</Gate></Suspense>;
 }

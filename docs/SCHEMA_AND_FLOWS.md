@@ -46,7 +46,7 @@ Dữ liệu dẫn xuất để mở danh sách 200+ chương bằng **một** l�
 {"id":"ch_…","path":"content/chapters/ch_….md","blob":"<git blob sha của file>","title":"…","act_id":"act_…","order":10,"status":"draft","pov":"Puna","words":2734}
 ```
 
-Khi tải danh sách, máy chủ so `blob` trong chỉ mục với blob thực trong cây thư mục (1 request). Chỉ những chương lệch (ví dụ agent vừa sửa) mới được đọc trực tiếp. Mỗi lần ứng dụng ghi, chỉ mục được sinh lại **trong cùng commit**.
+Khi tải danh sách, trang so `blob` trong chỉ mục với blob thực trong cây thư mục (1 request). Chỉ những chương lệch (ví dụ agent vừa sửa) mới được đọc trực tiếp. Mỗi lần ứng dụng ghi, chỉ mục được sinh lại **trong cùng commit**.
 
 ### Tóm tắt dẫn xuất
 
@@ -58,26 +58,27 @@ Khi tải danh sách, máy chủ so `blob` trong chỉ mục với blob thực t
 |---|---|---|
 | **Phiên bản đã lưu** | Repo (GitHub hoặc kho demo) | Nguồn chính. Mỗi lần "Lưu phiên bản" là một commit |
 | **Nháp** | IndexedDB của trình duyệt (`nb-studio/drafts`) | Chỉ trên thiết bị này. Khóa `<repoKey>::<chapterId>`, ghi kèm `baseBlob` + `baseCommit` (phiên bản gốc) |
-| **Cache máy chủ** | Bộ nhớ tiến trình (LRU) | Chỉ dữ liệu bất biến khóa theo sha (cây, blob, chương đã parse). Mất đi cũng không sao |
+| **Cache** | Bộ nhớ của tab (LRU) | Chỉ dữ liệu bất biến khóa theo sha (cây, blob, chương đã parse). Mất đi cũng không sao |
+| **Token GitHub** | sessionStorage (hoặc localStorage nếu “Ghi nhớ”) | Chỉ gửi tới api.github.com |
 
 Không có database nào lưu toàn văn chương.
 
 ## 3. Luồng viết và lưu
 
-1. Mở chương: tải **một** file (`GET /api/chapters/:id`), rồi tìm nháp trong IndexedDB.
+1. Mở chương: tải **một** file từ GitHub, rồi tìm nháp trong IndexedDB.
    - Có nháp và nháp dựa trên đúng phiên bản hiện tại: khôi phục và báo "Đã khôi phục nháp chưa lưu".
    - Có nháp nhưng phiên bản gốc đã cũ: vẫn khôi phục và **hiện cảnh báo xung đột**, chưa cho lưu cho tới khi người dùng chọn cách xử lý.
 2. Gõ: sau 400 ms nháp được ghi vào IndexedDB, và cả khi tab bị ẩn hoặc đóng. Thanh trạng thái hiện **"Nháp chỉ có trên thiết bị này · chưa lưu phiên bản"**.
-3. **Lưu phiên bản** (nút hoặc Ctrl/⌘+S, có thể kèm ghi chú): `PUT /api/chapters/:id` với `{meta, body, baseBlob}`.
-   - Máy chủ đọc head của nhánh. Nếu blob của chương ≠ `baseBlob` thì trả **409** kèm thông tin bản trên kho.
-   - Tạo **một commit** gồm file chương và `content/index.json`, rồi cập nhật ref với `force:false`. Nếu nhánh vừa đi tiếp (do file khác), máy chủ kiểm tra lại và thử lại tối đa 4 lần.
+3. **Lưu phiên bản** (nút hoặc Ctrl/⌘+S, có thể kèm ghi chú): gửi `{meta, body, baseBlob}` cho lớp nghiệp vụ trong trình duyệt.
+   - Đọc head của nhánh trên GitHub. Nếu blob của chương ≠ `baseBlob` thì trả **409** kèm thông tin bản trên kho.
+   - Tạo **một commit** gồm file chương và `content/index.json`, rồi cập nhật ref với `force:false`. Nếu nhánh vừa đi tiếp (do file khác) thì kiểm tra lại và thử lại tối đa 4 lần.
    - Thành công: xóa nháp **chỉ khi** nội dung nháp đúng bằng nội dung vừa lưu, rồi báo "Đã lưu phiên bản abc1234 lên GitHub".
    - Thất bại: giữ nháp và báo lỗi. Không bao giờ báo thành công.
 4. Xử lý xung đột: **So sánh** (diff 3 phía: thay đổi bên ngoài và bản trên kho so với nháp) · **Giữ nội dung của tôi** (đổi phiên bản gốc sang bản mới nhất; lần lưu sau sẽ thay bản trên kho, thay đổi bên ngoài vẫn nằm trong lịch sử) · **Bỏ nháp, dùng bản trên kho** (có xác nhận, có nút tải nháp về trước).
 
 ### Phát hiện thay đổi từ bên ngoài
 
-- Cứ 15 giây và mỗi khi cửa sổ được focus, editor hỏi `GET /api/chapters/:id/head`. Nếu blob khác thì hiện cảnh báo, không ghi đè gì.
+- Cứ 15 giây và mỗi khi cửa sổ được focus, editor hỏi GitHub blob hiện tại của chương. Nếu blob khác thì hiện cảnh báo, không ghi đè gì.
 - **Nhiều tab**: các tab báo cho nhau qua `BroadcastChannel`. Mỗi lần ghi nháp đều kiểm tra trong một transaction IndexedDB: nếu tab khác đã ghi nháp mới hơn thì tab này **dừng tự lưu** và hỏi người dùng (so sánh / dùng nội dung tab kia / tiếp tục với tab này).
 
 ## 4. Luồng đề xuất (agent → review → nhập)
@@ -90,7 +91,7 @@ Không có database nào lưu toàn văn chương.
    - Cờ "bản chính cũng đã sửa file này" và cảnh báo xung đột (`mergeable=false`).
 4. **Chấp nhận toàn bộ** = merge: `PUT /pulls/:n/merge` với `sha = head mà tác giả đã xem`. Nếu agent đẩy thêm commit sau khi trang được mở, GitHub trả **409**, ứng dụng báo "Đề xuất đã thay đổi sau khi bạn mở review" và **không nhập**.
 5. **Yêu cầu sửa** gửi review `REQUEST_CHANGES`. Nếu GitHub từ chối (tài khoản là tác giả PR) thì gửi thành bình luận và báo rõ.
-6. **Approval chính thức** tách riêng với "Chấp nhận". GitHub ghi rõ *"Pull request authors cannot approve their own pull requests"* (github/docs, `data/reusables/repositories/request-changes-tips.md`). Nút này bị vô hiệu khi danh tính của ứng dụng chính là tác giả PR.
+6. **Approval chính thức** tách riêng với “Chấp nhận” và được gửi bằng tài khoản của token. GitHub ghi rõ *"Pull request authors cannot approve their own pull requests"* (github/docs, `data/reusables/repositories/request-changes-tips.md`). Nút này bị vô hiệu khi danh tính của ứng dụng chính là tác giả PR.
 
 ## 5. Phục hồi
 
@@ -102,7 +103,7 @@ Không có database nào lưu toàn văn chương.
 
 ## 6. Gói tài liệu cho nhiệm vụ
 
-`POST /api/context-pack` trả manifest gồm `repo`, `branch`, `commit`, `task`, `rules[]` và `files[]`. Mỗi file có `{role: target|neighbor|canon|knowledge|timeline|outline|summary, path, blob, label, words?, stale?}`. Manifest **không nhúng nội dung**: agent đọc đúng phiên bản bằng `git show <commit>:<path>`. Chỉ những chương được chọn và chương lân cận được đưa vào, không nạp cả 200 chương.
+Trang **Gói tài liệu** tạo manifest gồm `repo`, `branch`, `commit`, `task`, `rules[]` và `files[]`. Mỗi file có `{role: target|neighbor|canon|knowledge|timeline|outline|summary, path, blob, label, words?, stale?}`. Manifest **không nhúng nội dung**: agent đọc đúng phiên bản bằng `git show <commit>:<path>`. Chỉ những chương được chọn và chương lân cận được đưa vào, không nạp cả 200 chương.
 
 ## 7. Nhập / xuất
 
@@ -110,5 +111,5 @@ Không có database nào lưu toàn văn chương.
 - Thân chương giữ **nguyên văn**: chỉ bỏ dòng trống ở đầu/cuối chương và đổi CRLF thành LF. Văn bản dạng NFD được cảnh báo nhưng không bị sửa.
 - Có cảnh báo cho: trùng số chương trong file, số chương đã có trong bản thảo (mặc định **bỏ qua**, ghi đè chỉ khi chọn rõ), ID trùng, thiếu tên, chương rỗng, nội dung trước chương đầu tiên (mặc định không nhập), số chương nhảy cóc.
 - Toàn bộ lần nhập là **một commit**. Ghi đè dùng kiểm tra phiên bản gốc.
-- Xuất: từng chương (`/api/export?chapter=id`, có `&format=raw` cho file gốc kèm frontmatter) hoặc toàn bộ bản thảo (`/api/export`).
+- Xuất: từng chương (nút “Xuất .md” trong editor) hoặc toàn bộ bản thảo (trang Nhập & xuất); tệp được tạo ngay trong trình duyệt.
 - **Nguồn chính sau khi chuyển là repository.** Không có đồng bộ hai chiều với Google Docs.
