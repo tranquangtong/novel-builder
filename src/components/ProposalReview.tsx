@@ -153,6 +153,15 @@ export function ProposalReview({ number }: { number: number }) {
               <div className="card card-pad grid decision" style={{ gap: 8 }}>
                 <h2 style={{ margin: 0 }}>Quyết định</h2>
                 <button className="btn primary" disabled={busy || headMoved || latest?.pr.mergeable !== true} onClick={() => setDialog("accept")} data-testid="accept">Chấp nhận toàn bộ & nhập vào bản chính</button>
+                {!busy && (headMoved || latest?.pr.mergeable !== true) && (
+                  <div className="small" style={{ color: "var(--warn)" }} data-testid="accept-blocked">
+                    {headMoved
+                      ? "Chưa nhập được: đề xuất vừa thay đổi — bấm “Xem phiên bản mới” ở trên."
+                      : latest?.pr.mergeable === false
+                        ? "Chưa nhập được: đề xuất xung đột với bản chính (xem khung đỏ ở trên). Nhờ agent cập nhật đề xuất từ bản chính, rồi tải lại trang."
+                        : "GitHub đang kiểm tra khả năng nhập — trang tự cập nhật sau vài giây."}
+                  </div>
+                )}
                 <button className="btn" disabled={busy} onClick={() => setDialog("changes")} data-testid="request-changes">Yêu cầu sửa…</button>
                 <button className="btn danger" disabled={busy} onClick={() => setDialog("close")} data-testid="close-proposal">Đóng đề xuất…</button>
                 <div className="small muted">Chấp nhận từng câu/đoạn riêng lẻ chưa có trong bản này — hiện chỉ có thể nhập toàn bộ đề xuất.</div>

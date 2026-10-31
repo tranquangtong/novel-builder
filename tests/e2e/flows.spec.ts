@@ -167,6 +167,7 @@ test.describe("Xung đột", () => {
     await expect(page.getByTestId("conflict")).toBeVisible();
     await expect(page.getByTestId("conflict")).toContainText(`content/chapters/${c.id}.md`);
     await expect(page.getByTestId("accept")).toBeDisabled();
+    await expect(page.getByTestId("accept-blocked")).toContainText("xung đột");
   });
 });
 
