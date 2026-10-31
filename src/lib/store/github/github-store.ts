@@ -71,7 +71,10 @@ export class GitHubStore implements RepoStore {
     this.octokit = new Octokit({
       auth: cfg.token,
       baseUrl: cfg.baseUrl,
-      request: cfg.fetch ? { fetch: cfg.fetch } : undefined,
+      // GitHub trả "Cache-Control: private, max-age=60": nếu để trình duyệt tự cache thì
+      // head của nhánh có thể cũ tới 60 giây (vừa nhập đề xuất mà vẫn thấy bản cũ).
+      // Luôn hỏi lại GitHub; dữ liệu bất biến (tree/blob theo sha) đã có LRU riêng.
+      request: { fetch: noStoreFetch(cfg.fetch) },
       userAgent: "the-last-miracle-studio",
     });
   }
@@ -344,6 +347,10 @@ export class GitHubStore implements RepoStore {
     }
     return out;
   }
+}
+
+function noStoreFetch(base?: typeof fetch): typeof fetch {
+  return (input, init) => (base ?? globalThis.fetch)(input, { ...init, cache: "no-store" });
 }
 
 function decodeBase64Utf8(b64: string): string {

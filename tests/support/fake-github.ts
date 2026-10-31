@@ -14,7 +14,7 @@ export const FAKE_LOGIN = "tranquangtong";
 export function fakeGitHub(git: MiniGit, opts: { owner?: string; repo?: string; private?: boolean } = {}) {
   const R = `/repos/${opts.owner ?? "o"}/${opts.repo ?? "r"}`;
   const trees = new Map<string, Record<string, string>>();
-  const calls: { method: string; path: string; auth: string }[] = [];
+  const calls: { method: string; path: string; auth: string; cache?: string }[] = [];
   const failures: { method: string; re: RegExp; status: number; message: string }[] = [];
   let mergeHead = "";
   let mergeable: boolean | null = true;
@@ -27,11 +27,11 @@ export function fakeGitHub(git: MiniGit, opts: { owner?: string; repo?: string; 
   };
 
   const json = (status: number, body: unknown) =>
-    new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "access-control-allow-origin": "*" } });
+    new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "access-control-allow-origin": "*", "cache-control": "private, max-age=60, s-maxage=60" } });
 
-  async function handle(method: string, url: URL, body: Record<string, unknown> | undefined, auth: string): Promise<Response> {
+  async function handle(method: string, url: URL, body: Record<string, unknown> | undefined, auth: string, cache?: string): Promise<Response> {
     const p = decodeURIComponent(url.pathname);
-    calls.push({ method, path: p, auth });
+    calls.push({ method, path: p, auth, cache });
     if (auth.toLowerCase() !== `token ${FAKE_TOKEN}`) return json(401, { message: "Bad credentials" });
     const f = failures.findIndex((x) => x.method === method && x.re.test(p));
     if (f >= 0) {
@@ -162,7 +162,7 @@ export function fakeGitHub(git: MiniGit, opts: { owner?: string; repo?: string; 
       const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
       const body = init?.body ? JSON.parse(String(init.body)) : undefined;
       const auth = new Headers(init?.headers).get("authorization") ?? "";
-      return handle(method, url, body, auth);
+      return handle(method, url, body, auth, init?.cache);
     },
     handle,
   };

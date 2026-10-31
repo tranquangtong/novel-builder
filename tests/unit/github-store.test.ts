@@ -20,6 +20,8 @@ describe("GitHubStore với GitHub API giả", () => {
     expect(snap.chapters).toHaveLength(200);
     expect(fake.calls.filter((c) => c.path.includes("/git/blobs/")).length).toBeLessThanOrEqual(6);
     expect(fake.calls.every((c) => c.auth === `token ${FAKE_TOKEN}`)).toBe(true);
+    // không để trình duyệt dùng bản cache cũ (GitHub gửi max-age=60)
+    expect(fake.calls.filter((c) => c.cache !== "no-store")).toEqual([]);
   });
 
   it("lưu phiên bản bằng 1 commit (tree → commit → PATCH ref force=false)", async () => {
