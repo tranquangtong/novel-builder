@@ -370,3 +370,11 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px
 .kv dd { min-width: 0; overflow-wrap: anywhere; }
 .btn.wrap { white-space: normal; text-align: left; }
 .decision .btn { white-space: normal; justify-content: center; text-align: center; }
+
+/* Trang review đề xuất: trên màn hình rộng, mỗi cột có thanh cuộn riêng; tiêu đề và cảnh báo đứng yên. */
+@media (min-width: 901px) {
+  .page.review-page { overflow: hidden; display: flex; flex-direction: column; }
+  .review-page > .page-inner { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; padding-bottom: 16px; }
+  .review-cols { flex: 1; min-height: 0; align-items: stretch; }
+  .review-col { min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; padding: 2px 6px 24px 2px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+}

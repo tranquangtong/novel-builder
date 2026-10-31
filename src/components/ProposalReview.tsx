@@ -87,7 +87,7 @@ export function ProposalReview({ number }: { number: number }) {
   const open = pr.state === "open";
 
   return (
-    <div className="page">
+    <div className="page review-page">
       <div className="page-inner" style={{ maxWidth: 1240 }}>
         <div className="small muted" style={{ marginBottom: 6 }}><Link href="/proposals">← Đề xuất chỉnh sửa</Link></div>
         <div className="page-head">
@@ -128,8 +128,8 @@ export function ProposalReview({ number }: { number: number }) {
           {result && <div className="banner danger"><div className="b-body small">{result}</div><button className="btn sm ghost" onClick={() => setResult(null)}>✕</button></div>}
         </div>
 
-        <div className="two-col" style={{ gridTemplateColumns: "300px minmax(0,1fr)" }}>
-          <div className="grid" style={{ gap: 12, minWidth: 0 }}>
+        <div className="two-col review-cols" style={{ gridTemplateColumns: "300px minmax(0,1fr)" }}>
+          <div className="grid review-col" style={{ gap: 12, minWidth: 0 }} data-testid="review-col-left">
             <div className="card card-pad">
               <h2>Mô tả của agent</h2>
               {pr.body ? <Markdown compact text={pr.body} /> : <div className="small muted">Không có mô tả.</div>}
@@ -175,7 +175,7 @@ export function ProposalReview({ number }: { number: number }) {
             )}
           </div>
 
-          <div className="grid" style={{ gap: 12, minWidth: 0 }}>
+          <div className="grid review-col" style={{ gap: 12, minWidth: 0 }} data-testid="review-col-right">
             {f ? <FileDiff file={f} actStr={actStr} /> : <div className="card empty">Đề xuất không có file nội dung.</div>}
             <div className="card card-pad">
               <h2>Thảo luận</h2>

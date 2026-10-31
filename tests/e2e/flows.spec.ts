@@ -211,6 +211,27 @@ test.describe("Review đề xuất", () => {
   });
 });
 
+test("trang review: hai cột có thanh cuộn riêng, trang không cuộn chung", async ({ page }) => {
+  await useDemo(page);
+  const ids = (await snapshot(page)).chapters.slice(20, 30).map((c) => c.id);
+  const p = await call<{ number: number }>(page, "POST", "/api/demo/agent", { action: "propose", chapterIds: ids });
+  await go(page, `/proposal/?n=${p.number}`);
+  await expect(page.getByTestId("diff-inline")).toBeVisible();
+  const right = page.getByTestId("review-col-right");
+  const left = page.getByTestId("review-col-left");
+  // nội dung dài hơn màn hình → cột phải tự cuộn
+  await page.getByText("hiện đoạn không đổi").click();
+  const m = await right.evaluate((el) => ({ sh: el.scrollHeight, ch: el.clientHeight, ov: getComputedStyle(el).overflowY }));
+  expect(m.ov).toBe("auto");
+  expect(m.sh).toBeGreaterThan(m.ch);
+  await right.evaluate((el) => el.scrollTo(0, 400));
+  expect(await right.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  expect(await left.evaluate((el) => el.scrollTop)).toBe(0);
+  expect(await page.locator(".page.review-page").evaluate((el) => el.scrollTop)).toBe(0);
+  // tiêu đề vẫn nhìn thấy sau khi cuộn
+  await expect(page.locator("h1")).toBeInViewport();
+});
+
 test.describe("Lịch sử và phục hồi", () => {
   test("phục hồi Ch10–11 về bản cũ, giữ Ch8–9 và canon", async ({ page }) => {
     await useDemo(page);
