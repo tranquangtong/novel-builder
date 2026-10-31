@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+.demo-data/
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+next-env.d.ts
+*.tsbuildinfo
+test-results/
+playwright-report/
+coverage/
+.e2e-demo-data/
+!.env.example
