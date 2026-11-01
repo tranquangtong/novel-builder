@@ -37,6 +37,18 @@ describe("Worker: xác thực Cloudflare Access", () => {
     expect((await call(noCfg, "GET", "/api/novels", { jwt: await token({ email: "tac-gia@example.com" }) })).status).toBe(500);
   });
 
+  it("team domain có hoặc không có https:// đều được; sai AUD thì báo rõ lý do", async () => {
+    const bare = fakeEnv({ ACCESS_TEAM_DOMAIN: "team.cloudflareaccess.com/" });
+    const ok = await call(bare, "GET", "/api/me", { jwt: await token({ email: "tac-gia@example.com" }) });
+    expect(await ok.json()).toMatchObject({ role: "editor" });
+    const env = fakeEnv();
+    const bad = await call(env, "GET", "/api/me", { jwt: await token({ email: "tac-gia@example.com" }, { aud: "44b8d105bdf56bff" }) });
+    expect(bad.status).toBe(401);
+    expect(((await bad.json()) as { error: string }).error).toMatch(/AUD của ứng dụng Access là 44b8d105bd…, nhưng ACCESS_AUD là aud-test…/);
+    const two = fakeEnv({ ACCESS_AUD: "khac, aud-test" });
+    expect((await call(two, "GET", "/api/me", { jwt: await token({ email: "tac-gia@example.com" }) })).status).toBe(200);
+  });
+
   it("bỏ qua Access chỉ khi DEV_AUTH_EMAIL được đặt VÀ host là localhost", async () => {
     const env = fakeEnv({ DEV_AUTH_EMAIL: "tac-gia@example.com" });
     const r = await worker.fetch(new Request("https://novel.example.com/api/me"), env);

@@ -61,6 +61,7 @@ jobs:
         run: rm -rf out && npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: ""
+          NEXT_PUBLIC_TARGET: cloudflare
           NEXT_PUBLIC_MANUSCRIPT_REPO: ${{ vars.MANUSCRIPT_REPO || 'tranquangtong/novel-thelastmiracle-manuscript' }}
       - name: E2E (Worker trên workerd + R2/D1 local)
         run: npx playwright test -c playwright.cloud.config.ts

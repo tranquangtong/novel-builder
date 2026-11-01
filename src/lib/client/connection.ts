@@ -17,11 +17,16 @@ const KEY = "nb-connection";
 
 export const DEFAULT_REPO = process.env.NEXT_PUBLIC_MANUSCRIPT_REPO ?? "";
 
+/** Bản build cho Cloudflare Worker (NEXT_PUBLIC_TARGET=cloudflare). */
+export const IS_CLOUD_BUILD = process.env.NEXT_PUBLIC_TARGET === "cloudflare";
+
 function read(storage: Storage | undefined): Connection | null {
   try {
     const raw = storage?.getItem(KEY);
     if (!raw) return null;
     const c = JSON.parse(raw) as Connection;
+    // Bản build cho Cloudflare chỉ có chế độ cloud: không bao giờ dùng GitHub/demo còn sót trong trình duyệt.
+    if (IS_CLOUD_BUILD) return c.mode === "cloud" && /^nv_[0-9a-z]+$/.test(c.novelId) ? c : null;
     if (c.mode === "demo") return c;
     if (c.mode === "cloud" && /^nv_[0-9a-z]+$/.test(c.novelId)) return c;
     if (c.mode === "github" && c.token && c.owner && c.repo) return c;

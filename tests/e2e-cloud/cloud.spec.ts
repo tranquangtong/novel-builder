@@ -203,3 +203,14 @@ test("nháp tự lưu lên R2: mở trên thiết bị khác (trình duyệt m�
   await expect(page.getByTestId("cloud-novels")).toContainText("Bộ nháp R2 (mới)");
   await expect(page.locator(".brand-title")).toHaveText("Bộ nháp R2 (mới)");
 });
+
+test("bản Cloudflare không bao giờ rơi về chế độ GitHub: bỏ qua kết nối GitHub cũ, lỗi đăng nhập thì báo rõ", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("nb-connection", JSON.stringify({ mode: "github", owner: "o", repo: "r", branch: "main", token: "github_pat_x", remember: true })));
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/novels\/$/);
+  await expect(page.locator("nav.nav")).not.toContainText("kết nối");
+  await page.route("**/api/me", (r) => r.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Phiên Access không hợp lệ: AUD …" }) }));
+  await page.goto("/library/");
+  await expect(page.getByTestId("cloud-login-error")).toContainText("Phiên Access không hợp lệ: AUD");
+  await expect(page.getByTestId("conn-token")).toHaveCount(0);
+});
