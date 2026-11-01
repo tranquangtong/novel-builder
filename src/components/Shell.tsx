@@ -17,14 +17,12 @@ const CLOUD_NAV: NavItem[] = [
   { href: "/novels", label: "Bộ truyện", icon: "❖" },
   { href: "/", label: "Tổng quan", icon: "◎" },
   { href: "/library", label: "Thư viện Act & chương", icon: "▤" },
-  { href: "/canon", label: "Canon & outline", icon: "✦" },
   { href: "/proposals", label: "Đề xuất chỉnh sửa", icon: "⇄", count: true },
   { href: "/history", label: "Lịch sử & phục hồi", icon: "↺" },
 ];
 const NAV: NavItem[] = [
   { href: "/", label: "Tổng quan", icon: "◎" },
   { href: "/library", label: "Thư viện Act & chương", icon: "▤" },
-  { href: "/canon", label: "Canon & outline", icon: "✦" },
   { href: "/proposals", label: "Đề xuất chỉnh sửa", icon: "⇄", count: true },
   { href: "/history", label: "Lịch sử & phục hồi", icon: "↺" },
   { href: "/context", label: "Gói tài liệu cho agent", icon: "▣" },
@@ -79,7 +77,7 @@ export function Shell({ children, conn, cloud = false }: { children: React.React
     const snap = project.data;
     if (!snap) return [];
     const f = filter.trim().toLowerCase();
-    const match = (c: (typeof snap.chapters)[number]) => !f || c.title.toLowerCase().includes(f) || String(c.number) === f || `ch ${c.number}` === f;
+    const match = (c: (typeof snap.chapters)[number]) => !f || c.title.toLowerCase().includes(f) || (!c.note && (String(c.number) === f || `ch ${c.number}` === f));
     const known = new Set(snap.acts.map((a) => a.id));
     const out = snap.acts.map((a) => ({ id: a.id, title: a.title, chapters: snap.chapters.filter((c) => c.act_id === a.id && match(c)) }));
     const orphans = snap.chapters.filter((c) => !known.has(c.act_id) && match(c));
@@ -98,7 +96,7 @@ export function Shell({ children, conn, cloud = false }: { children: React.React
             <span className="brand-title">{project.data?.project.title ?? (cloud ? "Novel Builder" : "The Last Miracle")}</span>
             {cloud && connected && <Link href="/novels" className="btn ghost sm" style={{ marginLeft: "auto" }} title="Chuyển sang bộ truyện khác" data-testid="switch-novel">Đổi bộ</Link>}
           </div>
-          <div className="brand-sub">{repoLabel}{connected ? ` · ${project.data ? `${project.data.chapters.length} chương` : "đang tải…"}` : ""}</div>
+          <div className="brand-sub">{repoLabel}{connected ? ` · ${project.data ? `${project.data.chapters.filter((c) => !c.note).length} chương` : "đang tải…"}` : ""}</div>
         </div>
         <nav className="nav">
           {(cloud ? CLOUD_NAV : NAV).filter((n) => connected || n.href === "/settings" || n.href === "/novels").map((n) => {
@@ -139,7 +137,7 @@ export function Shell({ children, conn, cloud = false }: { children: React.React
                 {!collapsedActs.has(g.id) &&
                   g.chapters.map((c) => (
                     <Link key={c.id} href={chapterHref(c.id)} className={`tree-ch ${activeId === c.id ? "active" : ""}`} title={`${c.title} · ${c.words} chữ`} onClick={() => setSidebarOpen(false)}>
-                      <span className="n">{c.number}</span>
+                      <span className="n">{c.note ? "·" : c.number}</span>
                       <span className="t">{c.title}</span>
                       <span className={`dot ${c.status} ${drafts.has(c.id) ? "local" : ""}`} title={drafts.has(c.id) ? "Có nháp chưa lưu trên thiết bị này" : c.status} />
                     </Link>

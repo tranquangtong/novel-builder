@@ -1,4 +1,5 @@
 "use client";
+import { chapterLabel } from "@/lib/domain/labels";
 import { chapterHref } from "@/lib/client/links";
 import Link from "next/link";
 import { Suspense, useState } from "react";
@@ -77,7 +78,7 @@ function History() {
                       return (
                         <tr key={f.path}>
                           <td style={{ width: 90 }}><span className={`chip ${f.status === "added" ? "ok" : f.status === "removed" ? "danger" : ""}`}>{f.status === "added" ? "thêm" : f.status === "removed" ? "xóa" : "sửa"}</span></td>
-                          <td>{c ? <Link href={chapterHref(c.id)}>Ch {c.number} · {c.title}</Link> : <span className="mono small">{f.path}</span>}</td>
+                          <td>{c ? <Link href={chapterHref(c.id)}>{chapterLabel(c)}</Link> : <span className="mono small">{f.path}</span>}</td>
                           <td className="small muted">{KIND_LABEL[fileKind(f.path)]}</td>
                         </tr>
                       );
@@ -150,7 +151,7 @@ function RestoreDialog({ fromCommit, onClose }: { fromCommit: string; onClose: (
             {cand.data?.items.filter((i) => !i.missing).map((i) => (
               <label key={i.id} className="list-item" data-testid="restore-candidate">
                 <input type="checkbox" checked={picked.has(i.id)} onChange={(e) => setPicked((s) => { const n = new Set(s); if (e.target.checked) n.add(i.id); else n.delete(i.id); return n; })} />
-                <span style={{ flex: 1 }}>Ch {i.number} · {i.title}{i.oldTitle && i.oldTitle !== i.title ? <span className="muted"> (khi đó: “{i.oldTitle}”)</span> : null}</span>
+                <span style={{ flex: 1 }}>{chapterLabel({ number: i.number ?? 0, title: i.title ?? "" })}{i.oldTitle && i.oldTitle !== i.title ? <span className="muted"> (khi đó: “{i.oldTitle}”)</span> : null}</span>
                 <span className="small muted">{i.oldWords} → hiện {i.currentWords} chữ</span>
               </label>
             ))}
@@ -162,7 +163,7 @@ function RestoreDialog({ fromCommit, onClose }: { fromCommit: string; onClose: (
           <div className="banner info"><div className="small">Xem trước: từ <b>bản hiện tại</b> sang <b>nội dung sẽ phục hồi</b>. Chưa có gì được ghi.</div></div>
           {preview.map((p) => (
             <div key={p.id}>
-              <h3 style={{ fontFamily: "var(--font-prose)", marginBottom: 8 }}>Ch {p.number} · {p.title}</h3>
+              <h3 style={{ fontFamily: "var(--font-prose)", marginBottom: 8 }}>{chapterLabel({ number: p.number ?? 0, title: p.title ?? "" })}</h3>
               <DiffView before={p.currentBody ?? ""} after={p.oldBody ?? ""} beforeLabel="Hiện tại" afterLabel="Sau khi phục hồi" />
             </div>
           ))}

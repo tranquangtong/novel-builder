@@ -18,7 +18,7 @@ describe("GitHubStore với GitHub API giả", () => {
     const { svc, fake } = await setup();
     const snap = await svc.snapshot();
     expect(snap.chapters).toHaveLength(200);
-    expect(fake.calls.filter((c) => c.path.includes("/git/blobs/")).length).toBeLessThanOrEqual(6);
+    expect(fake.calls.filter((c) => c.path.includes("/git/blobs/")).length).toBeLessThanOrEqual(7);
     expect(fake.calls.every((c) => c.auth === `token ${FAKE_TOKEN}`)).toBe(true);
     // không để trình duyệt dùng bản cache cũ (GitHub gửi max-age=60)
     expect(fake.calls.filter((c) => c.cache !== "no-store")).toEqual([]);

@@ -338,7 +338,7 @@ export function ChapterEditor({ id }: { id: string }) {
     <div className={`editor-wrap ${panel ? "" : "panel-closed"}`} style={{ height: "100%", minHeight: 0, flex: 1 }}>
       <div className="editor-col">
         <div className="editor-top">
-          <span className="crumbs">{act?.title ?? "—"} · Ch {summary?.number ?? "?"}</span>
+          <span className="crumbs">{act?.title ?? "—"} · {summary?.note ? "Ghi chú" : `Ch ${summary?.number ?? "?"}`}</span>
           <span className="grow" />
           <div className="tabs" style={{ margin: 0, border: 0 }}>
             <button className={`tab ${mode === "write" ? "active" : ""}`} onClick={() => setMode("write")}>Viết</button>
@@ -414,7 +414,7 @@ export function ChapterEditor({ id }: { id: string }) {
         )}
         <div className="editor-scroll">
           <div className="manuscript">
-            <div className="chapter-kicker">Chương {summary?.number ?? ""}{meta?.pov ? ` · POV ${meta.pov}` : ""}</div>
+            <div className="chapter-kicker">{summary?.note ? "Ghi chú" : `Chương ${summary?.number ?? ""}`}{meta?.pov ? ` · POV ${meta.pov}` : ""}</div>
             {mode === "write" ? (
               <input className="title-input" value={meta?.title ?? ""} placeholder="Tên chương" onChange={(e) => meta && setMeta({ ...meta, title: e.target.value })} aria-label="Tên chương" data-testid="chapter-title" disabled={!loaded} />
             ) : (
@@ -433,7 +433,7 @@ export function ChapterEditor({ id }: { id: string }) {
           </div>
         </div>
         <div className="statusbar">
-          <WordMeter words={words} target={target} />
+          {summary?.note ? <span className="meter"><span className="w" data-testid="word-count">{words.toLocaleString("vi-VN")}</span><span>chữ</span></span> : <WordMeter words={words} target={target} />}
           <span className="grow" />
           <span className="save-state" data-testid="save-state" data-state={saveState.kind}>
             <span className={`pip ${saveState.kind}`} />
@@ -516,7 +516,7 @@ function InfoPanel({ meta, setMeta, id, words }: { meta: Meta; setMeta: (m: Meta
       </label>
       <label className="field">Thuộc Act
         <select className="select" value={meta.act_id} onChange={(e) => setMeta({ ...meta, act_id: e.target.value })} data-testid="act-select">
-          {acts.map((a) => <option key={a.id} value={a.id}>{a.title}</option>)}
+          {acts.filter((a) => (a.kind === "notes") === (acts.find((x) => x.id === meta.act_id)?.kind === "notes")).map((a) => <option key={a.id} value={a.id}>{a.title}</option>)}
         </select>
       </label>
       <dl className="kv">

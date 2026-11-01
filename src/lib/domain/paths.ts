@@ -10,6 +10,12 @@ export const OUTLINES_DIR = `${CONTENT}/outlines`;
 export const SUMMARIES_DIR = `${CONTENT}/summaries`;
 export const REVIEWS_DIR = `${CONTENT}/reviews`;
 
+/** Act 0: nơi chứa outline, trivia, ghi chú viết truyện, thiết lập nhân vật. */
+export const NOTES_ACT_TITLE = "Act 0 · Outline & Trivia";
+export const NOTES_ACT_DESCRIPTION = "Outline, trivia, ghi chú viết truyện, thiết lập nhân vật. Không đánh số chương và không tính vào số chữ của truyện.";
+/** Thư mục cũ (trước khi có Act 0). Còn được đọc để chuyển vào Act 0. */
+export const LEGACY_NOTE_DIRS = [`${CONTENT}/outlines/`, `${CONTENT}/canon/`] as const;
+
 export const chapterPath = (id: string) => `${CHAPTERS_DIR}/${id}.md`;
 export const actPath = (id: string) => `${ACTS_DIR}/${id}.md`;
 export const summaryPath = (chapterId: string) => `${SUMMARIES_DIR}/${chapterId}.md`;

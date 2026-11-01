@@ -11,7 +11,8 @@ Repository này là **bản thảo riêng tư** của tác giả. Bạn (agent) 
 | `content/index.json` | **Chỉ mục tự sinh** (id, tiêu đề, Act, thứ tự, số chữ, blob sha) | Không ai sửa tay — ứng dụng tự sinh lại |
 | `content/acts/<act_id>.md` | Act: frontmatter `id`, `title`, `order` + mô tả | Theo nhiệm vụ |
 | `content/chapters/<chapter_id>.md` | Một chương/một file. Frontmatter: `id`, `title`, `act_id`, `order`, `status`, `pov` | Theo nhiệm vụ |
-| `content/canon/characters/` | **Canon đã chốt** về nhân vật | Chỉ khi nhiệm vụ yêu cầu rõ |
+| `content/chapters/<chapter_id>.md` với `act_id` của **Act 0** (Act có `kind: notes`, tên “Act 0 · Outline & Trivia”) | **Ghi chú viết truyện**: outline, trivia, thiết lập nhân vật. Không phải chương truyện: không đánh số, không tính vào số chữ. Frontmatter phụ: `note_kind`, `migrated_from` | Chỉ khi nhiệm vụ yêu cầu rõ |
+| `content/canon/characters/` | *(kiểu cũ — ứng dụng chuyển vào Act 0)* **Canon đã chốt** về nhân vật | Chỉ khi nhiệm vụ yêu cầu rõ |
 | `content/canon/world/` | **Canon đã chốt** về thế giới, vật phẩm, luật lệ | Chỉ khi nhiệm vụ yêu cầu rõ |
 | `content/canon/timeline/` | **Sự kiện đã xảy ra trong bản thảo** (có `source_chapter`) | Theo nhiệm vụ |
 | `content/canon/knowledge/` | **Kiến thức của từng nhân vật tại từng thời điểm** | Theo nhiệm vụ |
@@ -20,7 +21,8 @@ Repository này là **bản thảo riêng tư** của tác giả. Bạn (agent) 
 | `content/reviews/` | Ghi chú review, báo cáo continuity | Agent được tạo |
 
 `id` của chương **không bao giờ thay đổi** — kể cả khi đổi tên hay chuyển Act. Không đổi tên file chương.
-Số chương hiển thị (Ch 10, Ch 11…) được tính từ `order`, không lưu trong file.
+Số chương hiển thị (Ch 10, Ch 11…) được tính từ `order` của các chương **ngoài Act 0**, không lưu trong file.
+Ghi chú trong Act 0 không có số chương; chúng là tài liệu tham khảo, không phải sự kiện đã xảy ra trong truyện.
 
 ## 2. Đọc đúng phạm vi
 
@@ -37,7 +39,7 @@ Số chương hiển thị (Ch 10, Ch 11…) được tính từ `order`, không
 ## 3. Phân biệt các tầng sự thật
 
 - **Canon đã chốt** (`content/canon/characters`, `content/canon/world`, `status: canon`): sự thật của thế giới.
-- **Kế hoạch** (`content/outlines`): dự định, chưa phải sự thật.
+- **Kế hoạch** (ghi chú outline trong Act 0, hoặc `content/outlines` ở kho cũ): dự định, chưa phải sự thật.
 - **Đề xuất chưa duyệt** (PR đang mở, file có `status: proposed`): chưa phải sự thật.
 - **Sự kiện đã xảy ra** (`content/canon/timeline`): chỉ những gì đã viết trong bản thảo.
 - **Kiến thức nhân vật** (`content/canon/knowledge`): ai biết gì, từ chương nào.

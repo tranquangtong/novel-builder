@@ -37,6 +37,7 @@ export async function importChapters(svc: ManuscriptService, input: { items: Imp
       return a.id;
     }
     if (!actIds.has(act)) throw new ValidationError(`Act ${act} không tồn tại`);
+    if (snap.acts.find((a) => a.id === act)?.kind === "notes") throw new ValidationError("Không nhập chương truyện vào Act 0 (ghi chú)");
     return act;
   };
 
@@ -68,15 +69,16 @@ export async function importChapters(svc: ManuscriptService, input: { items: Imp
 
   // Thứ tự: chương mới được thêm vào cuối Act đích, theo đúng thứ tự trong file.
   const lastOrderInAct = new Map<string, number>();
-  const maxOrder = snap.chapters.at(-1)?.order ?? 0;
-  for (const c of snap.chapters) lastOrderInAct.set(c.act_id, c.order);
+  const story = snap.chapters.filter((c) => !c.note); // ghi chú Act 0 có thứ tự riêng
+  const maxOrder = story.at(-1)?.order ?? 0;
+  for (const c of story) lastOrderInAct.set(c.act_id, c.order);
   const nextOrder = (act: string) => {
-    const idx = snap.chapters.findIndex((c) => c.order > (lastOrderInAct.get(act) ?? Infinity));
+    const idx = story.findIndex((c) => c.order > (lastOrderInAct.get(act) ?? Infinity));
     const last = lastOrderInAct.get(act);
     let o: number;
     if (last === undefined) o = maxOrder + 1 + plan.length; // Act chưa có chương: thêm cuối bản thảo
     else if (idx === -1) o = last + 1;
-    else o = (last + snap.chapters[idx].order) / 2;
+    else o = (last + story[idx].order) / 2;
     lastOrderInAct.set(act, o);
     return o;
   };

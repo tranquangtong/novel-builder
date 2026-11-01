@@ -15,7 +15,7 @@ import { newId } from "../src/lib/domain/ids";
 import { gitBlobSha } from "../src/lib/domain/gitsha";
 import { countWords } from "../src/lib/domain/wordcount";
 import { AGENTS_MD } from "../src/lib/domain/agents-md";
-import { serializeIndex } from "../src/lib/core/service";
+import { serializeIndex, serializeNotesAct } from "../src/lib/core/service";
 import { parseChapter } from "../src/lib/domain/chapter";
 
 // Tên 9 Act theo outline (Phần IV). Có thể đổi tên trong ứng dụng; ID không đổi.
@@ -53,35 +53,44 @@ if (!exists("content/project.json")) {
   w("content/project.json", JSON.stringify({ title: "The Last Miracle", language: "vi", word_target: { min: 2500, max: 3000 } }, null, 2) + "\n");
 }
 if (!exists("AGENTS.md")) w("AGENTS.md", AGENTS_MD);
-for (const d of ["canon/characters", "canon/world", "canon/timeline", "canon/knowledge", "summaries", "reviews"]) {
+for (const d of ["summaries", "reviews"]) {
   if (!exists(`content/${d}`)) w(`content/${d}/.gitkeep`, "");
 }
 const actsDir = path.join(repo, "content/acts");
+const readActs = () => (fs.existsSync(actsDir) ? fs.readdirSync(actsDir).filter((f) => f.endsWith(".md")) : [])
+  .map((f) => fs.readFileSync(path.join(actsDir, f), "utf8"))
+  .map((t) => ({ id: /^id: (\S+)$/m.exec(t)?.[1] ?? "", order: Number(/^order: (\S+)$/m.exec(t)?.[1] ?? 0), notes: /^kind: notes$/m.test(t) }));
 let actIds: string[] = [];
-if (!fs.existsSync(actsDir) || !fs.readdirSync(actsDir).some((f) => f.endsWith(".md"))) {
+if (!readActs().some((a) => !a.notes)) {
   actIds = ACTS.map(() => newId("act"));
   ACTS.forEach((a, i) => w(`content/acts/${actIds[i]}.md`, serializeFrontmatter({ id: actIds[i], title: a.title, order: i + 1 }, `${a.range} (theo outline).\n`)));
 } else {
-  actIds = fs.readdirSync(actsDir).filter((f) => f.endsWith(".md"))
-    .map((f) => fs.readFileSync(path.join(actsDir, f), "utf8"))
-    .map((t) => ({ id: /^id: (\S+)$/m.exec(t)?.[1] ?? "", order: Number(/^order: (\S+)$/m.exec(t)?.[1] ?? 0) }))
-    .sort((x, y) => x.order - y.order)
-    .map((x) => x.id);
+  actIds = readActs().filter((a) => !a.notes).sort((x, y) => x.order - y.order).map((x) => x.id);
+}
+// Act 0 · Outline & Trivia (ghi chú, không đánh số chương)
+let notesActId = readActs().find((a) => a.notes)?.id;
+if (!notesActId) {
+  notesActId = newId("act");
+  w(`content/acts/${notesActId}.md`, serializeNotesAct(notesActId));
 }
 const actId = actIds[actNo - 1];
 if (!actId) throw new Error(`Không có Act ${actNo}`);
 
-// ---- outline (nguyên văn) ----
+// ---- outline (nguyên văn) → một ghi chú trong Act 0 ----
 if (outlineFile) {
   const raw = fs.readFileSync(outlineFile, "utf8").replace(/\r\n?/g, "\n");
-  if (exists("content/outlines/outline.md")) throw new Error("content/outlines/outline.md đã tồn tại — không ghi đè");
-  w("content/outlines/outline.md", serializeFrontmatter({ title: "Outline tổng (từ Google Docs)", type: "outline", status: "planned", source: "Google Docs: The Last Miracle - Outline" }, raw));
+  const noteId = newId("ch");
+  w(`content/chapters/${noteId}.md`, serializeChapter({
+    meta: { id: noteId, title: "Outline tổng (từ Google Docs)", act_id: notesActId, order: 1, status: "draft" },
+    body: raw,
+    extra: { note_kind: "outline", source: "Google Docs: The Last Miracle - Outline" },
+  }));
 }
 
 // ---- chương ----
 const parsed = parseImport(fs.readFileSync(chaptersFile, "utf8"), path.basename(chaptersFile));
 const chDir = path.join(repo, "content/chapters");
-const existing = fs.existsSync(chDir) ? fs.readdirSync(chDir).filter((f) => f.endsWith(".md")) : [];
+const existing = fs.existsSync(chDir) ? fs.readdirSync(chDir).filter((f) => f.endsWith(".md") && !fs.readFileSync(path.join(chDir, f), "utf8").includes(`act_id: ${notesActId}`)) : [];
 if (existing.length) throw new Error(`content/chapters đã có ${existing.length} chương — script không ghi đè`);
 
 const report: string[] = [];

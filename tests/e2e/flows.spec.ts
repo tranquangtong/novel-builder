@@ -373,3 +373,28 @@ test.describe("Gói tài liệu & giao diện", () => {
     await expect(page.getByTestId("demo-ribbon")).toBeVisible();
   });
 });
+
+test.describe("Act 0 · Outline & Trivia", () => {
+  test("chuyển outline/canon cũ vào Act 0 bằng một nút; menu Canon & outline không còn", async ({ page }) => {
+    await useDemo(page);
+    await go(page, "/library/");
+    await expect(page.getByRole("link", { name: "Canon & outline" })).toHaveCount(0);
+    await expect(page.getByTestId("notes-act-setup")).toBeVisible();
+    await page.getByTestId("notes-act-run").click();
+    await expect(page.getByTestId("notes-act-setup")).toHaveCount(0);
+    const snap = await snapshot(page);
+    const act0 = snap.acts.find((a) => a.kind === "notes")!;
+    expect(act0.title).toBe("Act 0 · Outline & Trivia");
+    const notes = snap.chapters.filter((c) => c.note);
+    expect(notes.map((n) => n.title)).toContain("Outline Act I");
+    expect(snap.chapters.filter((c) => !c.note)).toHaveLength(200);
+    await expect(page.getByText("Outline Act I").first()).toBeVisible();
+    // ghi chú mở được trong trình soạn, không có số chương
+    await openChapter(page, notes[0].id);
+    await expect(page.locator(".chapter-kicker")).toContainText("Ghi chú");
+    // trang /canon không còn
+    const res = await page.goto(`${B}/canon/`);
+    expect(res?.status()).toBe(404);
+  });
+});
+

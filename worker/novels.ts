@@ -1,4 +1,4 @@
-import { ManuscriptService, serializeIndex, ValidationError } from "../src/lib/core/service";
+import { ManuscriptService, serializeIndex, serializeNotesAct, ValidationError } from "../src/lib/core/service";
 import { serializeFrontmatter } from "../src/lib/domain/frontmatter";
 import { newId } from "../src/lib/domain/ids";
 import { AGENTS_MD } from "../src/lib/domain/agents-md";
@@ -60,8 +60,10 @@ export async function createNovel(env: Env, actor: string, input: { title?: stri
     if (!files["AGENTS.md"]) files["AGENTS.md"] = AGENTS_MD;
   } else {
     const actId = newId("act");
+    const notesActId = newId("act");
     files = {
       "content/project.json": JSON.stringify({ title, language: "vi", word_target: { min: 2500, max: 3000 } }, null, 2) + "\n",
+      [`content/acts/${notesActId}.md`]: serializeNotesAct(notesActId),
       [`content/acts/${actId}.md`]: serializeFrontmatter({ id: actId, title: "Act I", order: 1 }, "\n"),
       "AGENTS.md": AGENTS_MD,
     };
@@ -97,7 +99,7 @@ export function serviceFor(env: Env, novelId: string, actor: string) {
 export async function novelStats(env: Env, id: string) {
   try {
     const snap = await serviceFor(env, id, "system").snapshot();
-    return { chapters: snap.chapters.length, words: snap.chapters.reduce((s, c) => s + c.words, 0), acts: snap.acts.length, headSha: snap.headSha };
+    return { chapters: snap.chapters.filter((c) => !c.note).length, words: snap.chapters.reduce((s, c) => s + (c.note ? 0 : c.words), 0), acts: snap.acts.filter((a) => a.kind !== "notes").length, headSha: snap.headSha };
   } catch {
     return null;
   }

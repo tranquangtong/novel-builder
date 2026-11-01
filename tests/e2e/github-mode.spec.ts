@@ -48,8 +48,8 @@ test("kết nối bằng token; 200 chương không tải toàn bộ nội dung;
   await go(page, "/library/");
   await expect(page.getByTestId("chapter-tree").locator(".tree-ch")).toHaveCount(200);
   const blobReads = () => fake.calls.filter((c) => c.path.includes("/git/blobs/")).map((c) => c.path);
-  // project.json + index.json + 4 Act — không đọc thân chương nào
-  expect(new Set(blobReads()).size).toBeLessThanOrEqual(6);
+  // project.json + index.json + 5 Act (gồm Act 0) — không đọc thân chương nào
+  expect(new Set(blobReads()).size).toBeLessThanOrEqual(7);
   const before = new Set(blobReads());
   for (const n of [1, 100, 200]) {
     await page.getByTestId("chapter-tree").locator(".tree-ch").nth(n - 1).click();

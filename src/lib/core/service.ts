@@ -2,8 +2,9 @@ import { parseChapter, serializeChapter, validateMeta } from "../domain/chapter"
 import { parseFrontmatter, serializeFrontmatter } from "../domain/frontmatter";
 import { gitBlobSha } from "../domain/gitsha";
 import { newId } from "../domain/ids";
+import { chapterLabel } from "../domain/labels";
 import {
-  ACTS_DIR, CHAPTERS_DIR, INDEX_FILE, PROJECT_FILE, actPath, assertSafeContentPath, chapterIdFromPath, chapterPath, fileKind, isContentPath, type FileKind,
+  ACTS_DIR, CHAPTERS_DIR, INDEX_FILE, LEGACY_NOTE_DIRS, NOTES_ACT_DESCRIPTION, NOTES_ACT_TITLE, PROJECT_FILE, actPath, assertSafeContentPath, chapterIdFromPath, chapterPath, fileKind, isContentPath, type FileKind,
 } from "../domain/paths";
 import type {
   ActMeta, ChapterDoc, ChapterMeta, ChapterSummary, ChapterVersion, ProjectInfo, ProjectSnapshot, PullDetail,
@@ -59,8 +60,19 @@ function parseIndex(text: string): IndexEntry[] {
 }
 
 function shortTitle(c: { number: number; title: string }) {
-  return `Ch ${c.number} · ${c.title}`;
+  return chapterLabel(c);
 }
+
+/** Nội dung file Act 0 (Outline & Trivia). */
+export function serializeNotesAct(id: string, order = 0) {
+  return serializeFrontmatter({ id, title: NOTES_ACT_TITLE, order, kind: "notes" }, `${NOTES_ACT_DESCRIPTION}\n`);
+}
+
+const MANAGED_CHAPTER_KEYS = new Set(["id", "title", "act_id", "order", "status", "pov"]);
+const LEGACY_KIND: [string, string][] = [
+  ["content/outlines/", "outline"], ["content/canon/characters/", "character"], ["content/canon/world/", "world"],
+  ["content/canon/timeline/", "timeline"], ["content/canon/knowledge/", "knowledge"], ["content/canon/", "canon"],
+];
 
 export class ManuscriptService {
   constructor(public readonly store: RepoStore) {}
@@ -133,9 +145,6 @@ export class ManuscriptService {
     });
     if (indexed.size !== chapterFiles.length) stale += Math.max(0, indexed.size - chapterFiles.length);
 
-    entries.sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : 1));
-    const chapters: ChapterSummary[] = entries.map((e, i) => ({ ...e, number: i + 1 }));
-
     const actFiles = [...tree.entries()].filter(([p]) => p.startsWith(`${ACTS_DIR}/`) && p.endsWith(".md"));
     const acts: ActMeta[] = await mapLimit(actFiles, 8, async ([path, blob]) => {
       const f = await this.parsedFile(blob);
@@ -144,12 +153,35 @@ export class ManuscriptService {
         title: String(f.data.title ?? "Act"),
         order: Number(f.data.order ?? 0),
         description: f.body.trim() || undefined,
+        kind: f.data.kind === "notes" ? ("notes" as const) : undefined,
         path,
         blob,
       };
     });
     acts.sort((a, b) => a.order - b.order);
+
+    // Ghi chú (Act 0) đứng trước, không đánh số; chương truyện được đánh số 1..N như cũ.
+    const noteActs = new Set(acts.filter((a) => a.kind === "notes").map((a) => a.id));
+    const byOrder = (a: IndexEntry, b: IndexEntry) => a.order - b.order || (a.id < b.id ? -1 : 1);
+    const actRank = new Map(acts.map((a, i) => [a.id, i]));
+    const notes = entries.filter((e) => noteActs.has(e.act_id)).sort((a, b) => (actRank.get(a.act_id)! - actRank.get(b.act_id)!) || byOrder(a, b));
+    const story = entries.filter((e) => !noteActs.has(e.act_id)).sort(byOrder);
+    const chapters: ChapterSummary[] = [
+      ...notes.map((e) => ({ ...e, number: 0, note: true })),
+      ...story.map((e, i) => ({ ...e, number: i + 1, note: false })),
+    ];
     return { repo: this.store.repoKey, branch: this.branch, headSha, project, acts, chapters, indexStale: stale, tree };
+  }
+
+  /** ID các Act kiểu "notes" (Act 0) trong một cây thư mục. */
+  private async noteActIds(tree: Map<string, string>) {
+    const out = new Set<string>();
+    for (const [p, blob] of tree) {
+      if (!p.startsWith(`${ACTS_DIR}/`) || !p.endsWith(".md")) continue;
+      const f = await this.parsedFile(blob);
+      if (f.data.kind === "notes") out.add(String(f.data.id ?? p.replace(/^.*\/|\.md$/g, "")));
+    }
+    return out;
   }
 
   async getChapter(id: string, commitSha?: string): Promise<ChapterVersion> {
@@ -274,7 +306,14 @@ export class ManuscriptService {
         if (!tree.has(actPath(input.meta.act_id))) throw new ValidationError(`Act ${input.meta.act_id} không tồn tại`);
         let extra: Record<string, unknown> = {};
         const old = tree.get(path);
-        if (old) extra = (await this.parsedChapter(old, path)).doc.extra;
+        if (old) {
+          const prev = await this.parsedChapter(old, path);
+          extra = prev.doc.extra;
+          if (prev.doc.meta.act_id !== input.meta.act_id) {
+            const notes = await this.noteActIds(tree);
+            if (notes.has(prev.doc.meta.act_id) !== notes.has(input.meta.act_id)) throw new ValidationError("Không chuyển chương giữa Act 0 (ghi chú) và các Act truyện — Act 0 không đánh số chương");
+          }
+        }
         return { [path]: serializeChapter({ meta: { ...input.meta, id }, body: input.body, extra }) };
       },
     });
@@ -286,7 +325,10 @@ export class ManuscriptService {
     const id = newId("ch");
     let order: number;
     const inAct = snap.chapters.filter((c) => c.act_id === input.act_id);
-    if (input.afterId) {
+    if (snap.acts.find((a) => a.id === input.act_id)?.kind === "notes") {
+      // Ghi chú có thứ tự riêng trong Act 0, không xen vào dãy chương truyện.
+      order = Math.max(0, ...inAct.map((c) => c.order)) + 1;
+    } else if (input.afterId) {
       const i = snap.chapters.findIndex((c) => c.id === input.afterId);
       const a = snap.chapters[i];
       const b = snap.chapters[i + 1];
@@ -345,6 +387,72 @@ export class ManuscriptService {
     if (path === PROJECT_FILE) JSON.parse(content);
     const res = await this.commitWithChecks({ expected: { [path]: baseBlob }, author, message, build: async () => ({ [path]: content }) });
     return { commitSha: res.commitSha, blob: gitBlobSha(content) };
+  }
+
+  // ---------------- Act 0 (Outline & Trivia) ----------------
+
+  /** Act 0 đã có chưa, và còn file outline/canon kiểu cũ nào chưa được chuyển vào Act 0. */
+  async notesStatus() {
+    const tree = await this.store.getTree(await this.head());
+    return this.notesStatusFrom(tree);
+  }
+
+  private async notesStatusFrom(tree: Map<string, string>) {
+    const ids = await this.noteActIds(tree);
+    const legacy = [...tree.keys()].filter((p) => p.endsWith(".md") && LEGACY_NOTE_DIRS.some((d) => p.startsWith(d))).sort();
+    return { hasAct: ids.size > 0, actId: [...ids][0] ?? null, legacy };
+  }
+
+  /**
+   * Tạo Act 0 (nếu chưa có) và chuyển MỌI file .md trong content/outlines/ và content/canon/
+   * thành ghi chú của Act 0, trong MỘT commit: thân file giữ nguyên từng ký tự, thuộc tính (YAML)
+   * giữ lại làm metadata phụ, file cũ bị xóa khỏi bản chính (vẫn còn trong lịch sử để phục hồi).
+   * Gọi lại khi không còn gì để chuyển thì không tạo commit.
+   */
+  async setupNotesAct(author?: Author) {
+    const head = await this.head();
+    const tree = await this.store.getTree(head);
+    const st = await this.notesStatusFrom(tree);
+    if (st.hasAct && !st.legacy.length) return { actId: st.actId!, moved: [] as { from: string; id: string; title: string }[], commitSha: null as string | null };
+
+    const actId = st.actId ?? newId("act");
+    const expected: Record<string, string | null> = {};
+    if (!st.hasAct) expected[actPath(actId)] = null;
+    for (const p of st.legacy) expected[p] = tree.get(p)!;
+
+    const moved: { from: string; id: string; title: string }[] = [];
+    const res = await this.commitWithChecks({
+      expected,
+      author,
+      message: st.legacy.length ? `Chuyển ${st.legacy.length} file outline/canon vào Act 0` : "Tạo Act 0 · Outline & Trivia",
+      build: async ({ tree: t }) => {
+        const changes: Record<string, string | null> = {};
+        if (!st.hasAct) changes[actPath(actId)] = serializeNotesAct(actId);
+        const rank = (p: string) => LEGACY_KIND.findIndex(([d]) => p.startsWith(d));
+        const files = [...st.legacy].sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : 1));
+        // Thứ tự ghi chú mới nối tiếp sau các ghi chú đã có.
+        let order = 0;
+        if (st.hasAct) for (const [p, blob] of t) if (p.startsWith(`${CHAPTERS_DIR}/`)) { const d = (await this.parsedChapter(blob, p)).doc.meta; if (d.act_id === actId) order = Math.max(order, d.order); }
+        for (const from of files) {
+          const f = await this.parsedFile(t.get(from)!);
+          const id = newId("ch");
+          const extra: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(f.data)) {
+            if (MANAGED_CHAPTER_KEYS.has(k)) extra[k === "act_id" ? "related_act_id" : k === "status" ? "legacy_status" : `legacy_${k}`] = v;
+            else extra[k] = v;
+          }
+          extra.note_kind = LEGACY_KIND[rank(from)][1];
+          extra.migrated_from = from;
+          const title = typeof f.data.title === "string" && f.data.title ? f.data.title : (f.data.name ? String(f.data.name) : from.split("/").pop()!.replace(/\.md$/, ""));
+          order += 1;
+          changes[chapterPath(id)] = serializeChapter({ meta: { id, title, act_id: actId, order, status: "draft" }, body: f.body, extra });
+          changes[from] = null;
+          moved.push({ from, id, title });
+        }
+        return changes;
+      },
+    });
+    return { actId, moved, commitSha: res.commitSha };
   }
 
   async repairIndex(author?: Author) {
@@ -447,8 +555,10 @@ export class ManuscriptService {
     if (snap.project.demo_data) blocks.push("> DỮ LIỆU DEMO — không phải bản thảo thật.\n");
     blocks.push(`<!-- Xuất từ ${snap.repo} @ ${snap.headSha} -->\n`);
     let lastAct = "";
-    const bodies = await mapLimit(snap.chapters, 8, async (c) => (await this.parsedChapter(c.blob, c.path)).doc.body);
-    snap.chapters.forEach((c, i) => {
+    // Ghi chú trong Act 0 không thuộc bản thảo truyện nên không xuất.
+    const story = snap.chapters.filter((c) => !c.note);
+    const bodies = await mapLimit(story, 8, async (c) => (await this.parsedChapter(c.blob, c.path)).doc.body);
+    story.forEach((c, i) => {
       if (c.act_id !== lastAct) {
         blocks.push(`\n# ${actTitle.get(c.act_id) ?? "Chưa xếp Act"}\n`);
         lastAct = c.act_id;

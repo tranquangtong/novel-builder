@@ -13,10 +13,11 @@ describe("ManuscriptService (demo store)", () => {
     store.readBlob = async (s: string) => { reads++; return orig(s); };
     const snap = await svc.snapshot();
     expect(snap.chapters).toHaveLength(200);
-    expect(snap.acts).toHaveLength(4);
+    expect(snap.acts).toHaveLength(5); // Act 0 + 4 Act truyện
+    expect(snap.acts[0].kind).toBe("notes");
     expect(snap.indexStale).toBe(0);
-    // project.json + index.json + 4 act files
-    expect(reads).toBeLessThanOrEqual(6);
+    // project.json + index.json + 5 act files
+    expect(reads).toBeLessThanOrEqual(7);
     expect(snap.chapters[9].number).toBe(10);
     expect(JSON.stringify(snap.chapters)).not.toContain("Mưa không ngừng");
   });
@@ -110,5 +111,80 @@ describe("ManuscriptService (demo store)", () => {
     const { DemoStore, DEMO_AGENT } = await import("@/lib/store/demo/demo-store");
     const agent = new DemoStore(git, DEMO_AGENT);
     await expect(agent.reviewPull(1, "APPROVE", "ok")).rejects.toThrow(/tự approve/);
+  });
+
+  describe("Act 0 · Outline & Trivia", () => {
+    it("moves legacy outline/canon files into Act 0 verbatim, in one commit, without renumbering chapters", async () => {
+      const { svc, git } = await freshDemo();
+      const before = await svc.snapshot();
+      const outline = (await svc.readFile("content/outlines/act-1.md"))!.content;
+      const outlineBody = outline.replace(/^---\n[\s\S]*?\n---\n/, "");
+      const st = await svc.notesStatus();
+      expect(st.hasAct).toBe(true);
+      expect(st.legacy).toContain("content/outlines/act-1.md");
+      const commitsBefore = (await git.readState()).refs.main;
+
+      const r = await svc.setupNotesAct();
+      expect(r.moved.length).toBe(st.legacy.length);
+      expect(r.commitSha).not.toBe(commitsBefore);
+
+      const after = await svc.snapshot();
+      expect((await svc.notesStatus()).legacy).toEqual([]);
+      expect(await svc.readFile("content/outlines/act-1.md")).toBeNull();
+      expect(await svc.readFile("content/canon/world/kiem-tro.md")).toBeNull();
+      // chương truyện: cùng số lượng, cùng số thứ tự, cùng blob
+      const story = after.chapters.filter((c) => !c.note);
+      expect(story).toHaveLength(200);
+      expect(story.map((c) => [c.id, c.number, c.blob])).toEqual(before.chapters.filter((c) => !c.note).map((c) => [c.id, c.number, c.blob]));
+      expect(story[0].number).toBe(1);
+      // ghi chú: không đánh số, nằm trong Act 0, thân giữ nguyên văn
+      const notes = after.chapters.filter((c) => c.note);
+      expect(notes).toHaveLength(r.moved.length);
+      expect(notes.every((c) => c.number === 0 && c.act_id === r.actId)).toBe(true);
+      const moved = r.moved.find((m) => m.from === "content/outlines/act-1.md")!;
+      const note = await svc.getChapter(moved.id);
+      expect(note.doc.body).toBe(outlineBody);
+      expect(note.doc.meta.title).toBe("Outline Act I");
+      expect(note.doc.extra.note_kind).toBe("outline");
+      expect(note.doc.extra.migrated_from).toBe("content/outlines/act-1.md");
+      expect(note.doc.extra.related_act_id).toBeTruthy(); // act_id cũ không đè act_id mới
+      expect(note.doc.extra.legacy_status).toBe("planned");
+      // chạy lại: không còn gì để chuyển, không tạo commit
+      const again = await svc.setupNotesAct();
+      expect(again.commitSha).toBeNull();
+      expect((await git.readState()).refs.main).toBe(r.commitSha);
+    });
+
+    it("creates Act 0 when missing and keeps notes out of word totals and export", async () => {
+      const { svc } = await freshDemo();
+      const snap = await svc.snapshot();
+      // xóa Act 0 để mô phỏng kho cũ
+      const act0 = snap.acts.find((a) => a.kind === "notes")!;
+      await svc.commitWithChecks({ expected: {}, message: "x", build: async () => ({ [act0.path]: null }) });
+      expect((await svc.notesStatus()).hasAct).toBe(false);
+      const r = await svc.setupNotesAct();
+      expect(r.actId).not.toBe(act0.id);
+      const n = await svc.createChapter({ title: "Trivia: Kiếm Tro", act_id: r.actId });
+      const after = await svc.snapshot();
+      const note = after.chapters.find((c) => c.id === n.id)!;
+      expect(note.note).toBe(true);
+      expect(note.number).toBe(0);
+      expect(after.chapters.filter((c) => !c.note).at(-1)!.number).toBe(200);
+      const exp = await svc.exportManuscript();
+      expect(exp.text).not.toContain("Trivia: Kiếm Tro");
+      expect(exp.text).not.toContain("Act 0");
+    });
+
+    it("does not let a chapter move between Act 0 and the story acts", async () => {
+      const { svc, seed } = await freshDemo();
+      await svc.setupNotesAct();
+      const snap = await svc.snapshot();
+      const act0 = snap.acts.find((a) => a.kind === "notes")!;
+      const n = await svc.createChapter({ title: "Ghi chú", act_id: act0.id });
+      const v = await svc.getChapter(n.id);
+      await expect(svc.saveChapter(n.id, { meta: { ...v.doc.meta, act_id: seed.actIds[0] }, body: "x", baseBlob: v.blob })).rejects.toThrow(/Act 0/);
+      const ch = await svc.getChapter(seed.chapterIds[0]);
+      await expect(svc.saveChapter(ch.doc.meta.id, { meta: { ...ch.doc.meta, act_id: act0.id }, body: "x", baseBlob: ch.blob })).rejects.toThrow(/Act 0/);
+    });
   });
 });

@@ -26,8 +26,10 @@ export interface ChapterSummary extends ChapterMeta {
   /** git blob sha của file chương tại phiên bản đang xem. */
   blob: string;
   words: number;
-  /** Số chương hiển thị (1-based), tính từ thứ tự. */
+  /** Số chương hiển thị (1-based), tính từ thứ tự. Ghi chú trong Act 0 luôn là 0. */
   number: number;
+  /** true = ghi chú trong Act 0 (outline, trivia…): không đánh số, không tính vào số chữ/mục tiêu của truyện. */
+  note: boolean;
 }
 
 export interface ChapterDoc {
@@ -42,6 +44,8 @@ export interface ActMeta {
   title: string;
   order: number;
   description?: string;
+  /** "notes" = Act 0 chứa outline, trivia, ghi chú viết truyện. */
+  kind?: "notes";
   path: string;
   blob: string;
 }

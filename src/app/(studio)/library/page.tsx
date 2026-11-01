@@ -11,6 +11,7 @@ import { WordMeter } from "@/components/WordMeter";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { useLocalDraftIds } from "@/components/Shell";
+import { NotesActSetup } from "@/components/NotesActSetup";
 
 export default function LibraryPage() {
   const project = useProject();
@@ -34,8 +35,9 @@ export default function LibraryPage() {
   if (!snap) return <div className="page"><div className="page-inner">{project.error ? <div className="banner danger">{(project.error as Error).message}</div> : <span className="spinner" />}</div></div>;
 
   const move = async (c: ChapterSummary, dir: -1 | 1) => {
-    const i = snap.chapters.findIndex((x) => x.id === c.id);
-    const o = snap.chapters[i + dir];
+    const group = snap.chapters.filter((x) => x.note === c.note); // ghi chú Act 0 chỉ đổi chỗ với ghi chú
+    const i = group.findIndex((x) => x.id === c.id);
+    const o = group[i + dir];
     if (!o) return;
     setBusy(true);
     try {
@@ -48,7 +50,10 @@ export default function LibraryPage() {
     }
   };
 
-  const acts = [...snap.acts.map((a) => ({ id: a.id, title: a.title, description: a.description })), ...(snap.chapters.some((c) => !snap.acts.find((a) => a.id === c.act_id)) ? [{ id: "_none", title: "Chưa xếp Act", description: undefined }] : [])];
+  const isFirst = (c: ChapterSummary) => snap.chapters.find((x) => x.note === c.note)?.id === c.id;
+  const isLast = (c: ChapterSummary) => snap.chapters.filter((x) => x.note === c.note).at(-1)?.id === c.id;
+
+  const acts = [...snap.acts.map((a) => ({ id: a.id, title: a.title, description: a.description, kind: a.kind })), ...(snap.chapters.some((c) => !snap.acts.find((a) => a.id === c.act_id)) ? [{ id: "_none", title: "Chưa xếp Act", description: undefined, kind: undefined }] : [])];
 
   return (
     <div className="page">
@@ -56,13 +61,14 @@ export default function LibraryPage() {
         <div className="page-head">
           <div>
             <h1>Thư viện Act & chương</h1>
-            <div className="sub">{snap.chapters.length} chương. Danh sách chỉ tải metadata — nội dung chỉ được tải khi mở chương.</div>
+            <div className="sub">{snap.chapters.filter((c) => !c.note).length} chương + {snap.chapters.filter((c) => c.note).length} ghi chú (Act 0). Danh sách chỉ tải metadata — nội dung chỉ được tải khi mở chương.</div>
           </div>
           <div className="actions">
             <Link className="btn" href="/import" data-testid="lib-import">Nhập / xuất .md</Link>
             <button className="btn" onClick={() => setNewAct("")}>+ Act mới</button>
           </div>
         </div>
+        <NotesActSetup />
         <div className="row" style={{ marginBottom: 16 }}>
           <input className="input" style={{ maxWidth: 320 }} placeholder="Tìm theo tên, số chương, POV…" value={q} onChange={(e) => setQ(e.target.value)} />
           <select className="select" style={{ maxWidth: 200 }} value={status} onChange={(e) => setStatus(e.target.value as ChapterStatus | "")}>
@@ -72,6 +78,7 @@ export default function LibraryPage() {
           <span className="small muted">{filtered.length} kết quả</span>
         </div>
         {acts.map((a) => {
+          const isNotes = "kind" in a && a.kind === "notes";
           const cs = filtered.filter((c) => (a.id === "_none" ? !snap.acts.find((x) => x.id === c.act_id) : c.act_id === a.id));
           if (!cs.length && (q || status)) return null;
           return (
@@ -81,28 +88,28 @@ export default function LibraryPage() {
                   <h2 style={{ marginBottom: 2, fontFamily: "var(--font-prose)", fontSize: 18 }}>{a.title}</h2>
                   {a.description && <div className="small muted">{a.description}</div>}
                 </div>
-                {a.id !== "_none" && <button className="btn sm" onClick={() => setNewCh({ act_id: a.id, title: "" })}>+ Chương mới</button>}
+                {a.id !== "_none" && <button className="btn sm" onClick={() => setNewCh({ act_id: a.id, title: "" })}>{isNotes ? "+ Ghi chú mới" : "+ Chương mới"}</button>}
               </div>
               <table className="table">
-                <thead><tr><th style={{ width: 54 }}>Ch</th><th>Tiêu đề</th><th>POV</th><th>Trạng thái</th><th>Số chữ</th><th style={{ width: 90 }}></th></tr></thead>
+                <thead><tr><th style={{ width: 54 }}>{isNotes ? "" : "Ch"}</th><th>Tiêu đề</th><th>POV</th><th>Trạng thái</th><th>Số chữ</th><th style={{ width: 90 }}></th></tr></thead>
                 <tbody>
                   {cs.map((c) => (
                     <tr key={c.id}>
-                      <td className="num muted">{c.number}</td>
+                      <td className="num muted">{c.note ? "·" : c.number}</td>
                       <td>
                         <Link href={chapterHref(c.id)} style={{ textDecoration: "none", fontWeight: 500 }}>{c.title}</Link>
                         {drafts.has(c.id) && <span className="chip accent" style={{ marginLeft: 8 }}>nháp chưa lưu</span>}
                       </td>
                       <td className="small">{c.pov ?? <span className="muted">—</span>}</td>
                       <td><span className={`chip ${c.status === "approved" ? "ok" : c.status === "in_review" ? "warn" : ""}`}>{STATUS_LABEL[c.status]}</span></td>
-                      <td><WordMeter words={c.words} target={snap.project.word_target} compact /></td>
+                      <td>{c.note ? <span className="small">{c.words.toLocaleString("vi-VN")}</span> : <WordMeter words={c.words} target={snap.project.word_target} compact />}</td>
                       <td>
-                        <button className="btn ghost sm" disabled={busy || c.number === 1 || !!q || !!status} onClick={() => move(c, -1)} title="Lên trước" aria-label="Lên trước">↑</button>
-                        <button className="btn ghost sm" disabled={busy || c.number === snap.chapters.length || !!q || !!status} onClick={() => move(c, 1)} title="Xuống sau" aria-label="Xuống sau">↓</button>
+                        <button className="btn ghost sm" disabled={busy || isFirst(c) || !!q || !!status} onClick={() => move(c, -1)} title="Lên trước" aria-label="Lên trước">↑</button>
+                        <button className="btn ghost sm" disabled={busy || isLast(c) || !!q || !!status} onClick={() => move(c, 1)} title="Xuống sau" aria-label="Xuống sau">↓</button>
                       </td>
                     </tr>
                   ))}
-                  {!cs.length && <tr><td colSpan={6} className="muted small">Chưa có chương.</td></tr>}
+                  {!cs.length && <tr><td colSpan={6} className="muted small">{isNotes ? "Chưa có ghi chú." : "Chưa có chương."}</td></tr>}
                 </tbody>
               </table>
             </section>
@@ -110,7 +117,7 @@ export default function LibraryPage() {
         })}
       </div>
       {newCh && (
-        <Modal title="Chương mới" narrow onClose={() => setNewCh(null)} footer={<>
+        <Modal title={snap.acts.find((a) => a.id === newCh.act_id)?.kind === "notes" ? "Ghi chú mới" : "Chương mới"} narrow onClose={() => setNewCh(null)} footer={<>
           <button className="btn" onClick={() => setNewCh(null)}>Hủy</button>
           <button className="btn primary" disabled={!newCh.title.trim() || busy} onClick={async () => {
             setBusy(true);
@@ -126,8 +133,8 @@ export default function LibraryPage() {
             }
           }}>Tạo chương</button>
         </>}>
-          <label className="field">Tên chương<input className="input" autoFocus value={newCh.title} onChange={(e) => setNewCh({ ...newCh, title: e.target.value })} /></label>
-          <div className="small muted" style={{ marginTop: 8 }}>Chương được thêm vào cuối Act và tạo ngay một phiên bản (rỗng) trên kho với ID cố định.</div>
+          <label className="field">Tên<input className="input" autoFocus value={newCh.title} onChange={(e) => setNewCh({ ...newCh, title: e.target.value })} /></label>
+          <div className="small muted" style={{ marginTop: 8 }}>Chương (hoặc ghi chú, nếu là Act 0) được thêm vào cuối Act và tạo ngay một phiên bản (rỗng) trên kho với ID cố định.</div>
         </Modal>
       )}
       {newAct !== null && (
