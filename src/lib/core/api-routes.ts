@@ -238,11 +238,14 @@ export const ROUTES: [string, RegExp, Handler][] = [
       needId(id);
       const v = await b.svc.getChapter(id);
       const n = (await b.svc.snapshot()).chapters.find((c) => c.id === id)?.number ?? 0;
+      if (n === 0) return { text: `## ${v.doc.meta.title}\n\n${v.doc.body}`, name: `Ghi-chu-${v.doc.meta.title}.md` };
       return { text: `## Ch ${n} · ${v.doc.meta.title}\n\n${v.doc.body}`, name: `Ch${String(n).padStart(3, "0")}-${v.doc.meta.title}.md` };
     }
     const r = await b.svc.exportManuscript();
     return { text: r.text, name: `${r.snap.project.title}-${r.snap.headSha.slice(0, 7)}.md` };
   }],
+  ["GET", /^\/api\/notes-act$/, async ({ b }) => b.svc.notesStatus()],
+  ["POST", /^\/api\/notes-act$/, async ({ b }) => b.svc.setupNotesAct(await author(b))],
   ["POST", /^\/api\/agent\/proposals$/, async ({ b, body }) => {
     if (!(b.svc.store instanceof DemoStore)) throw new ApiRouteError("Chỉ có ở chế độ Cloudflare/demo", 501, "unsupported");
     return createAgentProposal(b.svc.store, await b.svc.store.actorLogin(), body as never);
@@ -253,7 +256,7 @@ export const ROUTES: [string, RegExp, Handler][] = [
 function routeKey(i: number) {
   return ROUTE_KEYS[i];
 }
-const ROUTE_KEYS = ["GET /api/me", "GET /api/project", "POST /api/project/reindex", "POST /api/project/init", "POST /api/chapters", "POST /api/chapters/swap", "GET /api/chapters/:id", "PUT /api/chapters/:id", "GET /api/chapters/:id/head", "GET /api/chapters/:id/history", "POST /api/acts", "GET /api/files", "GET /api/file", "PUT /api/file", "GET /api/history", "GET /api/history/:id", "POST /api/restore/preview", "POST /api/restore", "GET /api/proposals", "GET /api/proposals/:n", "POST /api/proposals/:n/comment", "POST /api/proposals/:n/review", "POST /api/proposals/:n/merge", "POST /api/proposals/:n/close", "POST /api/import", "POST /api/context-pack", "GET /api/export", "POST /api/agent/proposals"];
+const ROUTE_KEYS = ["GET /api/me", "GET /api/project", "POST /api/project/reindex", "POST /api/project/init", "POST /api/chapters", "POST /api/chapters/swap", "GET /api/chapters/:id", "PUT /api/chapters/:id", "GET /api/chapters/:id/head", "GET /api/chapters/:id/history", "POST /api/acts", "GET /api/files", "GET /api/file", "PUT /api/file", "GET /api/history", "GET /api/history/:id", "POST /api/restore/preview", "POST /api/restore", "GET /api/proposals", "GET /api/proposals/:n", "POST /api/proposals/:n/comment", "POST /api/proposals/:n/review", "POST /api/proposals/:n/merge", "POST /api/proposals/:n/close", "POST /api/import", "POST /api/context-pack", "GET /api/export", "GET /api/notes-act", "POST /api/notes-act", "POST /api/agent/proposals"];
 
 export function canAccess(role: Role, method: string, key: string) {
   if (role === "editor") return true;

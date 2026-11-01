@@ -1,4 +1,5 @@
 "use client";
+import { chapterLabel } from "@/lib/domain/labels";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -140,7 +141,7 @@ export function ProposalReview({ number }: { number: number }) {
                 {view.files.map((x, i) => (
                   <button key={x.path} className={`list-item ${i === active ? "active" : ""}`} onClick={() => setActive(i)} data-testid="proposal-file">
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "block", fontWeight: 500 }}>{x.chapter ? `Ch ${x.chapter.number} · ${x.chapter.title}` : x.path.split("/").pop()}</span>
+                      <span style={{ display: "block", fontWeight: 500 }}>{x.chapter ? chapterLabel(x.chapter) : x.path.split("/").pop()}</span>
                       <span className="small muted">{KIND_LABEL[x.kind]} · {x.status === "added" ? "thêm mới" : x.status === "removed" ? "xóa" : "sửa"}</span>
                       {x.changedOnMainSinceBase && <span className="chip warn" style={{ marginTop: 4 }}>bản chính cũng đã sửa</span>}
                     </span>
@@ -267,7 +268,7 @@ function FileDiff({ file, actStr }: { file: PFile; actStr: Map<string, string> }
     return (
       <div className="card card-pad">
         <div className="row" style={{ marginBottom: 10 }}>
-          <h2 style={{ margin: 0, fontFamily: "var(--font-prose)", fontSize: 18 }}>{file.chapter ? `Ch ${file.chapter.number} · ${file.chapter.title}` : file.path}</h2>
+          <h2 style={{ margin: 0, fontFamily: "var(--font-prose)", fontSize: 18 }}>{file.chapter ? chapterLabel(file.chapter) : file.path}</h2>
           <span className="mono small muted">{file.path}</span>
         </div>
         {file.changedOnMainSinceBase && <div className="banner warn" style={{ marginBottom: 10 }}><div className="small">Bản chính đã sửa chương này sau khi agent bắt đầu. “Trước” bên dưới là bản agent dựa vào, không phải bản chính hiện tại.</div></div>}

@@ -9,6 +9,8 @@ import { listDrafts, type Draft } from "@/lib/client/drafts";
 import { STATUS_LABEL, type CommitInfo, type PullSummary } from "@/lib/domain/types";
 import { formatNumber, targetState } from "@/lib/domain/wordcount";
 import { useToast } from "@/components/Toast";
+import { NotesActSetup } from "@/components/NotesActSetup";
+import { chapterShort } from "@/lib/domain/labels";
 
 export default function OverviewPage() {
   const project = useProject();
@@ -24,10 +26,11 @@ export default function OverviewPage() {
   if (project.error) return <NotReady error={project.error as Error} />;
   const snap = project.data;
   if (!snap) return <div className="page"><div className="page-inner"><span className="spinner" /></div></div>;
-  const total = snap.chapters.reduce((s, c) => s + c.words, 0);
+  const story = snap.chapters.filter((c) => !c.note); // ghi chú Act 0 không tính vào truyện
+  const total = story.reduce((s, c) => s + c.words, 0);
   const byStatus = { draft: 0, in_review: 0, approved: 0 };
-  snap.chapters.forEach((c) => byStatus[c.status]++);
-  const inTarget = snap.chapters.filter((c) => targetState(c.words, snap.project.word_target) === "within").length;
+  story.forEach((c) => byStatus[c.status]++);
+  const inTarget = story.filter((c) => targetState(c.words, snap.project.word_target) === "within").length;
   const byId = new Map(snap.chapters.map((c) => [c.id, c]));
 
   return (
@@ -40,9 +43,11 @@ export default function OverviewPage() {
           </div>
           <div className="actions">
             <Link className="btn" href="/library">Thư viện chương</Link>
-            {snap.chapters[0] && <Link className="btn primary" href={chapterHref((drafts[0]?.chapterId && byId.has(drafts[0].chapterId) ? drafts[0].chapterId : snap.chapters[0].id))}>Tiếp tục viết</Link>}
+            {story[0] && <Link className="btn primary" href={chapterHref((drafts[0]?.chapterId && byId.has(drafts[0].chapterId) ? drafts[0].chapterId : story[0].id))}>Tiếp tục viết</Link>}
           </div>
         </div>
+
+        <NotesActSetup />
 
         {snap.indexStale > 0 && (
           <div className="banner warn" style={{ marginBottom: 16 }}>
@@ -55,7 +60,7 @@ export default function OverviewPage() {
         )}
 
         <div className="grid cols-3" style={{ marginBottom: 16 }}>
-          <div className="card card-pad stat"><div className="v">{snap.chapters.length}</div><div className="l">chương · {snap.acts.length} Act</div></div>
+          <div className="card card-pad stat"><div className="v">{story.length}</div><div className="l">chương · {snap.acts.filter((a) => a.kind !== "notes").length} Act · {snap.chapters.length - story.length} ghi chú</div></div>
           <div className="card card-pad stat"><div className="v">{formatNumber(total)}</div><div className="l">chữ trong bản thảo · {inTarget} chương trong mục tiêu {formatNumber(snap.project.word_target.min)}–{formatNumber(snap.project.word_target.max)}</div></div>
           <div className="card card-pad stat"><div className="v">{pulls.data?.pulls.filter((p) => p.contentRelated).length ?? "…"}</div><div className="l">đề xuất đang chờ duyệt</div></div>
         </div>
@@ -66,7 +71,7 @@ export default function OverviewPage() {
             <table className="table">
               <thead><tr><th>Act</th><th className="num">Chương</th><th className="num">Chữ</th><th>Trạng thái</th></tr></thead>
               <tbody>
-                {snap.acts.map((a) => {
+                {snap.acts.filter((a) => a.kind !== "notes").map((a) => {
                   const cs = snap.chapters.filter((c) => c.act_id === a.id);
                   const ap = cs.filter((c) => c.status === "approved").length;
                   return (
@@ -94,7 +99,7 @@ export default function OverviewPage() {
                 return (
                   <Link key={d.key} href={chapterHref(d.chapterId)} className="list-item">
                     <span className="dot local" />
-                    <span style={{ flex: 1 }}>{c ? `Ch ${c.number} · ` : ""}{d.meta.title}</span>
+                    <span style={{ flex: 1 }}>{c && !c.note ? `Ch ${c.number} · ` : ""}{d.meta.title}</span>
                     <span className="small muted">{relTime(d.updatedAt)}</span>
                   </Link>
                 );
@@ -112,7 +117,7 @@ export default function OverviewPage() {
                 <Link key={p.number} href={proposalHref(p.number)} className="list-item">
                   <span className="mono small muted">#{p.number}</span>
                   <span style={{ flex: 1 }}>{p.title}</span>
-                  <span className="small muted">{p.chapters.map((c) => `Ch ${c.number}`).join(", ")}</span>
+                  <span className="small muted">{p.chapters.map((c) => chapterShort(c)).join(", ")}</span>
                 </Link>
               ))}
             </div>

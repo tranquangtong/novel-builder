@@ -5,6 +5,7 @@ import { api, short } from "@/lib/client/api";
 import { useProject } from "@/lib/client/hooks";
 import { KIND_LABEL, type FileKind } from "@/lib/domain/paths";
 import { useToast } from "@/components/Toast";
+import { chapterLabel } from "@/lib/domain/labels";
 
 type F = { path: string; title: string; kind: FileKind; stale?: boolean; data: Record<string, unknown> };
 type Manifest = { commit: string; repo: string; branch: string; task: string; files: { role: string; path: string; blob: string; label: string; words?: number; stale?: boolean; note?: string }[]; totals: { files: number; chapter_words: number; manuscript_chapters: number }; rules: string[] };
@@ -36,7 +37,8 @@ export default function ContextPackPage() {
     queryKey: ["pack-files"],
     queryFn: async () => (await Promise.all(["content/canon/", "content/outlines/", "content/summaries/"].map((p) => api<{ files: F[] }>(`/api/files?prefix=${p}`)))).flatMap((x) => x.files).filter((f) => !f.path.endsWith(".gitkeep")),
   });
-  const chapters = useMemo(() => project.data?.chapters ?? [], [project.data]);
+  const chapters = useMemo(() => (project.data?.chapters ?? []).filter((c) => !c.note), [project.data]);
+  const notes = useMemo(() => (project.data?.chapters ?? []).filter((c) => c.note), [project.data]);
   const targets = useMemo(() => {
     const nums = new Set(parseRanges(range));
     return chapters.filter((c) => nums.has(c.number));
@@ -100,12 +102,25 @@ export default function ContextPackPage() {
                 <input className="input" type="number" min={0} max={5} value={radius} onChange={(e) => setRadius(Math.max(0, Math.min(5, Number(e.target.value) || 0)))} />
               </label>
               {neighbors.map((c) => (
-                <label key={c.id} className="check"><input type="checkbox" checked={!neighborOff.has(c.id)} onChange={(e) => setNeighborOff((s) => { const n = new Set(s); if (e.target.checked) n.delete(c.id); else n.add(c.id); return n; })} /> Ch {c.number} · {c.title}</label>
+                <label key={c.id} className="check"><input type="checkbox" checked={!neighborOff.has(c.id)} onChange={(e) => setNeighborOff((s) => { const n = new Set(s); if (e.target.checked) n.delete(c.id); else n.add(c.id); return n; })} /> {chapterLabel(c)}</label>
               ))}
               <label className="check"><input type="checkbox" checked={withSummaries} onChange={(e) => setWithSummaries(e.target.checked)} /> Kèm tóm tắt của chương lân cận (nếu có)</label>
             </div>
             <div className="card card-pad">
-              <h2>Hồ sơ canon, outline, tóm tắt</h2>
+              <h2>Ghi chú Act 0, tóm tắt, hồ sơ</h2>
+              {notes.length > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <div className="pane-label">Act 0 · Outline & Trivia</div>
+                  <div className="checklist">
+                    {notes.map((n) => (
+                      <label key={n.id} className="check">
+                        <input type="checkbox" checked={files.has(n.path)} onChange={(e) => setFiles((s) => { const x = new Set(s); if (e.target.checked) x.add(n.path); else x.delete(n.path); return x; })} />
+                        {n.title}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               {groups.map(([kind, fs]) => (
                 <div key={kind} style={{ marginBottom: 10 }}>
                   <div className="pane-label">{KIND_LABEL[kind]}</div>

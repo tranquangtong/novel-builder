@@ -4,7 +4,7 @@ import { gitBlobSha } from "../../domain/gitsha";
 import { newId } from "../../domain/ids";
 import { INDEX_FILE, PROJECT_FILE, actPath, chapterPath, summaryPath } from "../../domain/paths";
 import type { ChapterDoc } from "../../domain/types";
-import { ManuscriptService, serializeIndex } from "../../core/service";
+import { ManuscriptService, serializeIndex, serializeNotesAct } from "../../core/service";
 import { countWords } from "../../domain/wordcount";
 import { DEMO_AGENT, DemoStore } from "./demo-store";
 import type { MiniGit } from "./minigit";
@@ -147,6 +147,11 @@ export async function seedDemo(git: MiniGit): Promise<SeedInfo> {
   }
 
   const ch = (n: number) => chapterIds[n - 1];
+
+  // Act 0 (Outline & Trivia) — trống. Các file canon/outline bên dưới mô phỏng một kho cũ,
+  // để thử chức năng “Chuyển vào Act 0”.
+  const notesActId = newId("act", idRand);
+  files[actPath(notesActId)] = serializeNotesAct(notesActId);
 
   files["content/canon/characters/puna.md"] = serializeFrontmatter(
     { title: "Puna", type: "character", status: "canon", aliases: ["Cô gái từ Velmar"] },

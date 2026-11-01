@@ -1,4 +1,5 @@
 "use client";
+import { chapterLabel } from "@/lib/domain/labels";
 import { proposalHref } from "@/lib/client/links";
 import Link from "next/link";
 import { useState } from "react";
@@ -52,7 +53,7 @@ export default function ProposalsPage() {
                   <span className="small muted" style={{ display: "block" }}>
                     {p.author} · nhánh <span className="mono">{p.headRef}</span> · cập nhật {fmtDate(p.updatedAt)} · {p.files.length} file
                   </span>
-                  {p.chapters.length > 0 && <span className="small" style={{ display: "block", marginTop: 2 }}>Chương: {p.chapters.map((c) => `Ch ${c.number} · ${c.title}`).join("; ")}</span>}
+                  {p.chapters.length > 0 && <span className="small" style={{ display: "block", marginTop: 2 }}>Chương: {p.chapters.map((c) => chapterLabel(c)).join("; ")}</span>}
                 </span>
                 <span className={`chip ${p.state === "open" ? "warn" : p.state === "merged" ? "ok" : ""}`}>{STATE_LABEL[p.state]}</span>
               </Link>
@@ -72,7 +73,7 @@ function DemoAgentTools() {
   const [ch, setCh] = useState<string[]>([]);
   const [canon, setCanon] = useState(false);
   const [mainCh, setMainCh] = useState("");
-  const chapters = project.data?.chapters ?? [];
+  const chapters = (project.data?.chapters ?? []).filter((c) => !c.note);
   return (
     <div className="card card-pad" style={{ marginTop: 20, borderStyle: "dashed" }} data-testid="demo-agent-tools">
       <h2>Mô phỏng agent (chỉ có ở chế độ demo)</h2>
@@ -81,7 +82,7 @@ function DemoAgentTools() {
         <div>
           <label className="field">Agent mở đề xuất sửa các chương
             <select className="select" multiple size={6} value={ch} onChange={(e) => setCh([...e.target.selectedOptions].map((o) => o.value))} data-testid="demo-propose-chapters">
-              {chapters.map((c) => <option key={c.id} value={c.id}>Ch {c.number} · {c.title}</option>)}
+              {chapters.map((c) => <option key={c.id} value={c.id}>{chapterLabel(c)}</option>)}
             </select>
           </label>
           <label className="small row" style={{ gap: 4, marginTop: 6 }}><input type="checkbox" checked={canon} onChange={(e) => setCanon(e.target.checked)} /> kèm một thay đổi canon</label>
@@ -95,7 +96,7 @@ function DemoAgentTools() {
           <label className="field">Agent sửa thẳng bản chính (để thử phát hiện thay đổi bên ngoài)
             <select className="select" value={mainCh} onChange={(e) => setMainCh(e.target.value)} data-testid="demo-main-chapter">
               <option value="">Chọn chương…</option>
-              {chapters.map((c) => <option key={c.id} value={c.id}>Ch {c.number} · {c.title}</option>)}
+              {chapters.map((c) => <option key={c.id} value={c.id}>{chapterLabel(c)}</option>)}
             </select>
           </label>
           <button className="btn sm" style={{ marginTop: 8 }} disabled={!mainCh} data-testid="demo-edit-main" onClick={async () => {

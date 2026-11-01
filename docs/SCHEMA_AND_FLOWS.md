@@ -8,7 +8,11 @@ content/
   project.json                    { title, subtitle?, language, word_target: {min, max}, demo_data? }
   index.json                      CHỈ MỤC TỰ SINH — không sửa tay
   acts/<act_id>.md                frontmatter: id, title, order; thân: mô tả
-  chapters/<chapter_id>.md        một chương / một file
+                                  Act 0 · Outline & Trivia có thêm `kind: notes`, order 0
+  chapters/<chapter_id>.md        một chương / một file. Chương có act_id = Act 0 là GHI CHÚ
+                                  (outline, trivia, thiết lập nhân vật): không đánh số, không tính
+                                  vào số chữ/mục tiêu, không xuất; có thể kèm note_kind, migrated_from
+  (kiểu cũ — trang có nút “Chuyển vào Act 0”, sau đó các thư mục này trống)
   canon/characters/*.md           canon đã chốt (status: canon | proposed)
   canon/world/*.md                canon đã chốt về thế giới, vật phẩm, địa danh
   canon/timeline/*.md             sự kiện ĐÃ xảy ra trong bản thảo (events[].source_chapter)
@@ -50,7 +54,7 @@ Khi tải danh sách, trang so `blob` trong chỉ mục với blob thực trong 
 
 ### Tóm tắt dẫn xuất
 
-`source_blob` là git blob sha của file chương lúc tóm tắt. Nếu blob hiện tại khác thì tóm tắt **đã cũ**: trang Canon và Gói tài liệu đánh dấu "đã cũ".
+`source_blob` là git blob sha của file chương lúc tóm tắt. Nếu blob hiện tại khác thì tóm tắt **đã cũ**: trang Gói tài liệu đánh dấu "đã cũ".
 
 ## 2. Cache và nháp: phân biệt rõ
 
