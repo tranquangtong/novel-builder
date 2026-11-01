@@ -70,6 +70,7 @@ export function fakeR2() {
     },
     body: new Blob([o.data]).stream(),
     text: async () => new TextDecoder().decode(o.data),
+    json: async () => JSON.parse(new TextDecoder().decode(o.data)) as unknown,
     arrayBuffer: async () => o.data.slice().buffer,
   });
   return {

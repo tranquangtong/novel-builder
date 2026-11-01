@@ -92,3 +92,26 @@ export async function createNovel(env: Env, actor: string, input: { title?: stri
 export function serviceFor(env: Env, novelId: string, actor: string) {
   return new ManuscriptService(storeFor(env, novelId, actor));
 }
+
+/** Thống kê nhẹ cho trang quản lý bộ truyện: chỉ đọc chỉ mục, không đọc nội dung chương. */
+export async function novelStats(env: Env, id: string) {
+  try {
+    const snap = await serviceFor(env, id, "system").snapshot();
+    return { chapters: snap.chapters.length, words: snap.chapters.reduce((s, c) => s + c.words, 0), acts: snap.acts.length, headSha: snap.headSha };
+  } catch {
+    return null;
+  }
+}
+
+/** Đổi tên bộ truyện: cập nhật danh sách (D1) và content/project.json trong cùng thao tác (một phiên bản mới). */
+export async function renameNovel(env: Env, id: string, actor: string, title: string) {
+  const t = title.trim();
+  if (!t || t.length > 200) throw new ValidationError("Tên không hợp lệ");
+  const svc = serviceFor(env, id, actor);
+  const f = await svc.readFile("content/project.json");
+  if (!f) throw new ValidationError("Bộ truyện thiếu content/project.json");
+  const project = { ...(JSON.parse(f.content) as Record<string, unknown>), title: t };
+  await svc.saveFile("content/project.json", JSON.stringify(project, null, 2) + "\n", f.blob, `Đổi tên bộ truyện thành “${t}”`, { name: actor, email: actor.includes("@") ? actor : `${actor}@agent.invalid` });
+  await env.DB.prepare("UPDATE novels SET title = ? WHERE id = ?").bind(t, id).run();
+  return { id, title: t };
+}

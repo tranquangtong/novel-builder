@@ -11,7 +11,17 @@ import type { PullSummary } from "@/lib/domain/types";
 import { ThemeToggle } from "./ThemeToggle";
 import { clearConnection, type Connection } from "@/lib/client/connection";
 
-const NAV = [
+type NavItem = { href: string; label: string; icon: string; count?: boolean };
+/** Chế độ Cloudflare: gọn lại. Gói tài liệu và Nhập/xuất mở bằng nút trong trang Đề xuất / Thư viện. */
+const CLOUD_NAV: NavItem[] = [
+  { href: "/novels", label: "Bộ truyện", icon: "❖" },
+  { href: "/", label: "Tổng quan", icon: "◎" },
+  { href: "/library", label: "Thư viện Act & chương", icon: "▤" },
+  { href: "/canon", label: "Canon & outline", icon: "✦" },
+  { href: "/proposals", label: "Đề xuất chỉnh sửa", icon: "⇄", count: true },
+  { href: "/history", label: "Lịch sử & phục hồi", icon: "↺" },
+];
+const NAV: NavItem[] = [
   { href: "/", label: "Tổng quan", icon: "◎" },
   { href: "/library", label: "Thư viện Act & chương", icon: "▤" },
   { href: "/canon", label: "Canon & outline", icon: "✦" },
@@ -44,9 +54,9 @@ export function useLocalDraftIds(repoKey: string | undefined) {
   return ids;
 }
 
-export function Shell({ children, conn }: { children: React.ReactNode; conn: Connection | null }) {
+export function Shell({ children, conn, cloud = false }: { children: React.ReactNode; conn: Connection | null; cloud?: boolean }) {
   const mode = conn?.mode;
-  const repoLabel = !conn ? "chưa kết nối" : conn.mode === "demo" ? "kho demo (trên trình duyệt)" : conn.mode === "cloud" ? `${conn.novelTitle} · Cloudflare` : `${conn.owner}/${conn.repo}`;
+  const repoLabel = !conn ? (cloud ? "chưa chọn bộ truyện" : "chưa kết nối") : conn.mode === "demo" ? "kho demo (trên trình duyệt)" : conn.mode === "cloud" ? `${conn.novelTitle} · Cloudflare` : `${conn.owner}/${conn.repo}`;
   const connected = !!conn;
   const pathname = usePathname();
   const router = useRouter();
@@ -59,10 +69,10 @@ export function Shell({ children, conn }: { children: React.ReactNode; conn: Con
   const drafts = useLocalDraftIds(project.data?.repo);
 
   useEffect(() => {
-    const onUnauth = () => router.replace("/settings");
+    const onUnauth = () => router.replace(cloud ? "/novels" : "/settings");
     window.addEventListener("nb:unauthenticated", onUnauth);
     return () => window.removeEventListener("nb:unauthenticated", onUnauth);
-  }, [router]);
+  }, [router, cloud]);
 
   const activeId = pathname.startsWith("/chapter") ? search.get("id") ?? undefined : undefined;
   const groups = useMemo(() => {
@@ -85,12 +95,13 @@ export function Shell({ children, conn }: { children: React.ReactNode; conn: Con
       <aside className="sidebar" aria-label="Điều hướng">
         <div className="sidebar-head">
           <div className="brand">
-            <span className="brand-title">{project.data?.project.title ?? "The Last Miracle"}</span>
+            <span className="brand-title">{project.data?.project.title ?? (cloud ? "Novel Builder" : "The Last Miracle")}</span>
+            {cloud && connected && <Link href="/novels" className="btn ghost sm" style={{ marginLeft: "auto" }} title="Chuyển sang bộ truyện khác" data-testid="switch-novel">Đổi bộ</Link>}
           </div>
           <div className="brand-sub">{repoLabel}{connected ? ` · ${project.data ? `${project.data.chapters.length} chương` : "đang tải…"}` : ""}</div>
         </div>
         <nav className="nav">
-          {NAV.filter((n) => connected || n.href === "/settings").map((n) => {
+          {(cloud ? CLOUD_NAV : NAV).filter((n) => connected || n.href === "/settings" || n.href === "/novels").map((n) => {
             const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
             return (
               <Link key={n.href} href={n.href} className={active ? "active" : ""} onClick={() => setSidebarOpen(false)}>
@@ -141,7 +152,7 @@ export function Shell({ children, conn }: { children: React.ReactNode; conn: Con
         <div className="sidebar-foot">
           <span className="who" title={repoLabel}>{conn?.mode === "github" ? conn.owner : conn?.mode === "cloud" ? "Cloudflare" : conn ? "Demo" : "—"}</span>
           <ThemeToggle />
-          {connected && (
+          {connected && !cloud && (
             <button
               className="btn ghost sm"
               title="Xóa token khỏi trình duyệt này"

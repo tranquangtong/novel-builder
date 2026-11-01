@@ -209,3 +209,67 @@ describe("R2D1Storage: compare-and-swap", () => {
     expect(final.refs).toEqual({ main: "2+b", other: "x" });
   });
 });
+
+describe("Worker: nháp tự lưu trên R2, đổi tên, thống kê", () => {
+  it("nháp lưu/đọc/xoá trên R2, không bị thiết bị khác ghi đè bằng bản cũ hơn, người chỉ đọc không ghi được", async () => {
+    const env = fakeEnv();
+    const editor = await token({ email: "tac-gia@example.com" });
+    const reader = await token({ email: "ban-doc@example.com" });
+    const { id } = (await (await call(env, "POST", "/api/novels", { jwt: editor, body: { title: "B" } })).json()) as { id: string };
+    const url = `/api/novels/${id}/drafts/ch_abc123`;
+    expect(await (await call(env, "GET", url, { jwt: editor })).json()).toEqual({ draft: null });
+    const d1 = { baseBlob: "b1", baseCommit: "c1", body: "Đêm ấy — “Ừ.”", meta: { title: "T" }, updatedAt: 2000, device: "may-A" };
+    expect((await call(env, "PUT", url, { jwt: editor, body: d1 })).status).toBe(200);
+    expect([...env.BUCKET.objects.keys()]).toContain(`novels/${id}/drafts/ch_abc123.json`);
+    const got = (await (await call(env, "GET", url, { jwt: reader })).json()) as { draft: { body: string; by: string } };
+    expect(got.draft).toMatchObject({ body: "Đêm ấy — “Ừ.”", by: "tac-gia@example.com" });
+    // thiết bị khác gửi bản cũ hơn → 409 kèm nháp mới nhất, không ghi đè
+    const stale = await call(env, "PUT", url, { jwt: editor, body: { ...d1, body: "cũ", updatedAt: 1000, device: "may-B" } });
+    expect(stale.status).toBe(409);
+    expect(((await stale.json()) as { draft: { body: string } }).draft.body).toBe("Đêm ấy — “Ừ.”");
+    // cùng thiết bị thì được
+    expect((await call(env, "PUT", url, { jwt: editor, body: { ...d1, body: "mới", updatedAt: 3000 } })).status).toBe(200);
+    expect((await call(env, "PUT", url, { jwt: reader, body: d1 })).status).toBe(403);
+    // danh sách nháp
+    expect(((await (await call(env, "GET", `/api/novels/${id}/drafts`, { jwt: editor })).json()) as { drafts: { chapterId: string }[] }).drafts.map((x) => x.chapterId)).toEqual(["ch_abc123"]);
+    // xoá có điều kiện: nháp mới hơn mốc lưu thì giữ lại
+    expect(await (await call(env, "DELETE", `${url}?ifUpdatedAt=2500`, { jwt: editor })).json()).toEqual({ deleted: false });
+    expect(await (await call(env, "DELETE", `${url}?ifUpdatedAt=3000`, { jwt: editor })).json()).toEqual({ deleted: true });
+    expect(await (await call(env, "GET", url, { jwt: editor })).json()).toEqual({ draft: null });
+    expect((await call(env, "GET", `/api/novels/${id}/drafts/..%2Fobjects`, { jwt: editor })).status).toBe(400);
+  });
+
+  it("đổi tên cập nhật cả danh sách và project.json (một phiên bản mới); thống kê chương/chữ", async () => {
+    const env = fakeEnv();
+    const editor = await token({ email: "tac-gia@example.com" });
+    const reader = await token({ email: "ban-doc@example.com" });
+    const files = {
+      "content/project.json": '{"title":"Tên cũ"}\n',
+      "content/acts/act_x1.md": "---\nid: act_x1\ntitle: Act 1\norder: 1\n---\n",
+      "content/chapters/ch_abc123.md": "---\nid: ch_abc123\ntitle: Một\nact_id: act_x1\norder: 1\nstatus: draft\n---\nmột hai ba ![ảnh](asset:x.png)\n",
+    };
+    const { id } = (await (await call(env, "POST", "/api/novels", { jwt: editor, body: { title: "Tên cũ", files } })).json()) as { id: string };
+    expect((await call(env, "PATCH", `/api/novels/${id}`, { jwt: reader, body: { title: "x" } })).status).toBe(403);
+    expect((await call(env, "PATCH", `/api/novels/${id}`, { jwt: editor, body: { title: "  " } })).status).toBe(400);
+    expect((await call(env, "PATCH", `/api/novels/${id}`, { jwt: editor, body: { title: "The Last Miracle" } })).status).toBe(200);
+    const list = (await (await call(env, "GET", "/api/novels?stats=1", { jwt: reader })).json()) as { novels: { id: string; title: string; stats: { chapters: number; words: number; acts: number } }[] };
+    expect(list.novels[0]).toMatchObject({ id, title: "The Last Miracle", stats: { chapters: 1, words: 3, acts: 1 } });
+    const pj = (await (await call(env, "GET", `/api/novels/${id}/file?path=content/project.json`, { jwt: reader })).json()) as { content: string };
+    expect(JSON.parse(pj.content).title).toBe("The Last Miracle");
+    const snap = (await (await call(env, "GET", `/api/novels/${id}/project`, { jwt: reader })).json()) as { project: { title: string } };
+    expect(snap.project.title).toBe("The Last Miracle");
+  });
+
+  it("ảnh: nhận các loại nhân vật / cảnh quan / cảnh hành động; từ chối loại lạ", async () => {
+    const env = fakeEnv();
+    const editor = await token({ email: "tac-gia@example.com" });
+    const { id } = (await (await call(env, "POST", "/api/novels", { jwt: editor, body: { title: "B" } })).json()) as { id: string };
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    for (const kind of ["character", "scenery", "action", "other"]) {
+      expect((await call(env, "POST", `/api/novels/${id}/assets?chapter=ch_abc123&kind=${kind}&name=a.png`, { jwt: editor, raw: png, type: "image/png" })).status).toBe(201);
+    }
+    expect((await call(env, "POST", `/api/novels/${id}/assets?chapter=ch_abc123&kind=la-lung&name=a.png`, { jwt: editor, raw: png, type: "image/png" })).status).toBe(400);
+    const list = (await (await call(env, "GET", `/api/novels/${id}/assets?chapter=ch_abc123`, { jwt: editor })).json()) as { assets: { kind: string }[] };
+    expect(list.assets.map((a) => a.kind).sort()).toEqual(["action", "character", "other", "scenery"]);
+  });
+});

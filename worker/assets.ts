@@ -17,7 +17,8 @@ export const IMAGE_TYPES: Record<string, string> = {
   "image/avif": "avif",
 };
 export const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
-export const ASSET_KINDS = ["sketch", "illustration", "reference"] as const;
+/** Loại ảnh: nhân vật, cảnh quan, cảnh hành động, phác thảo, minh hoạ, tham khảo, khác. */
+export const ASSET_KINDS = ["character", "scenery", "action", "sketch", "illustration", "reference", "other"] as const;
 const SCOPE = /^(chung|ch_[0-9a-z_-]{3,40})$/;
 
 export interface AssetInfo {

@@ -3,7 +3,8 @@ import { ManuscriptService } from "../src/lib/core/service";
 import { listAssets, serveAsset, trashAsset, uploadAsset } from "./assets";
 import { authenticate, AuthError, type Identity } from "./auth";
 import type { Env } from "./env";
-import { createNovel, getNovel, listNovels, storeFor } from "./novels";
+import { createNovel, getNovel, listNovels, novelStats, renameNovel, storeFor } from "./novels";
+import { deleteDraft, getDraft, listDrafts, putDraft } from "./drafts";
 
 /**
  * Cloudflare Worker: phục vụ trang tĩnh (out/) và API /api/*.
@@ -70,7 +71,11 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
   // /api/novels
   if (parts[1] !== "novels") throw new ApiRouteError("Không tìm thấy", 404, "not_found");
   if (parts.length === 2) {
-    if (method === "GET") return json({ novels: await listNovels(env) });
+    if (method === "GET") {
+      const novels = await listNovels(env);
+      if (url.searchParams.get("stats") !== "1") return json({ novels });
+      return json({ novels: await Promise.all(novels.map(async (n) => ({ ...n, stats: await novelStats(env, n.id) }))) });
+    }
     if (method === "POST") {
       needEditor(who);
       return json(await createNovel(env, who.name, await readJson(req)), 201);
@@ -80,6 +85,24 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
 
   const novel = await getNovel(env, parts[2]);
   if (!novel) throw new ApiRouteError("Không có bộ truyện này", 404, "not_found");
+
+  // /api/novels/:id  (đổi tên)
+  if (parts.length === 3 && method === "PATCH") {
+    needEditor(who);
+    const b = await readJson(req);
+    return json(await renameNovel(env, novel.id, who.name, String(b.title ?? "")));
+  }
+
+  // /api/novels/:id/drafts[/:chapterId]  — nháp tự lưu (không phải phiên bản)
+  if (parts[3] === "drafts") {
+    if (parts.length === 4 && method === "GET") return json({ drafts: await listDrafts(env, novel.id) });
+    const chapterId = parts[4] ?? "";
+    if (method === "GET") return json({ draft: await getDraft(env, novel.id, chapterId) });
+    needEditor(who);
+    if (method === "PUT") return json({ draft: await putDraft(env, novel.id, chapterId, who.name, await readJson(req)) });
+    if (method === "DELETE") return json(await deleteDraft(env, novel.id, chapterId, Number(url.searchParams.get("ifUpdatedAt")) || undefined));
+    throw new ApiRouteError("Phương thức không hỗ trợ", 405, "invalid");
+  }
 
   // /api/novels/:id/assets...
   if (parts[3] === "assets") {

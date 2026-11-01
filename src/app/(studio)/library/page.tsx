@@ -59,6 +59,7 @@ export default function LibraryPage() {
             <div className="sub">{snap.chapters.length} chương. Danh sách chỉ tải metadata — nội dung chỉ được tải khi mở chương.</div>
           </div>
           <div className="actions">
+            <Link className="btn" href="/import" data-testid="lib-import">Nhập / xuất .md</Link>
             <button className="btn" onClick={() => setNewAct("")}>+ Act mới</button>
           </div>
         </div>

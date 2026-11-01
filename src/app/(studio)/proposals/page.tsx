@@ -26,6 +26,9 @@ export default function ProposalsPage() {
             <h1>Đề xuất chỉnh sửa</h1>
             <div className="sub">Mỗi đề xuất là một pull request do agent (hoặc người khác) mở trên nhánh riêng. Bạn xem trước–sau rồi quyết định nhập vào bản chính.</div>
           </div>
+          <div className="actions">
+            <Link className="btn" href="/context" data-testid="goto-context">Gói tài liệu cho agent</Link>
+          </div>
         </div>
         <div className="row" style={{ marginBottom: 12 }}>
           <div className="tabs" style={{ margin: 0 }}>

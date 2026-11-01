@@ -34,11 +34,13 @@ function png(): Buffer {
 }
 
 async function createNovel(page: Page, title: string) {
-  await page.goto("/settings/");
-  await expect(page.getByRole("heading", { name: "Bộ truyện trên Cloudflare" })).toBeVisible();
+  // chưa chọn bộ nào → về trang Bộ truyện
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/novels\/$/);
+  await expect(page.getByRole("heading", { name: "Tất cả bộ truyện" })).toBeVisible();
   await page.getByTestId("new-novel-title").fill(title);
   await page.getByTestId("create-novel").click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).not.toHaveURL(/\/novels\/$/);
   await expect(page.locator("h1")).toHaveText(title);
 }
 
@@ -70,10 +72,19 @@ test("ảnh của chương: tải lên R2, chèn vào chương, hiển thị khi
   await page.getByRole("dialog").getByRole("textbox").fill("Chương có ảnh");
   await page.getByRole("button", { name: "Tạo chương" }).click();
   await expect(page.getByTestId("chapter-title")).toHaveValue("Chương có ảnh");
-  await page.getByRole("button", { name: "Ảnh", exact: true }).click();
+  await page.getByTestId("goto-gallery").click();
+  await expect(page.getByTestId("chapter-gallery")).toBeInViewport();
+  await page.getByLabel("Loại ảnh").selectOption("character");
   await page.getByPlaceholder("Chú thích (tuỳ chọn)").fill("Phác thảo Zen");
   await page.getByTestId("image-upload").setInputFiles({ name: "zen sketch.png", mimeType: "image/png", buffer: png() });
   await expect(page.getByTestId("image-list")).toContainText("Phác thảo Zen");
+  await expect(page.getByTestId("image-list")).toContainText("Nhân vật");
+  await page.getByLabel("Loại ảnh").selectOption("scenery");
+  await page.getByPlaceholder("Chú thích (tuỳ chọn)").fill("Đáy Sắt");
+  await page.getByTestId("image-upload").setInputFiles({ name: "day-sat.png", mimeType: "image/png", buffer: png() });
+  await expect(page.getByTestId("image-filter")).toContainText("Cảnh quan (1)");
+  await page.getByTestId("image-filter").getByRole("button", { name: "Nhân vật (1)" }).click();
+  await expect(page.getByTestId("image-list").locator("figure")).toHaveCount(1);
   const thumb = page.getByTestId("image-list").locator("img").first();
   await expect.poll(() => thumb.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(2);
   await page.getByRole("button", { name: "Chèn vào chương" }).click();
@@ -124,19 +135,71 @@ test("chuyển bộ truyện từ repo GitHub (API giả) sang Cloudflare, 200 c
     const res = await fake.handle(req.method(), new URL(req.url()), req.postData() ? JSON.parse(req.postData()!) : undefined, req.headers()["authorization"] ?? "");
     await route.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: await res.text() });
   });
-  await page.goto("/settings/");
+  await page.goto("/novels/");
   await page.getByText("Chuyển một bộ truyện từ repo GitHub sang Cloudflare").click();
   await page.getByLabel("Repo", { exact: true }).fill("o/r");
   await page.getByLabel("Token GitHub (chỉ cần quyền đọc)").fill(FAKE_TOKEN);
   await page.getByRole("button", { name: "Chuyển sang Cloudflare" }).click();
-  await expect(page.getByText(/Xong: 200 chương/)).toBeVisible({ timeout: 60_000 });
-  const row = page.getByTestId("cloud-novels").locator(".list-item", { hasText: "The Last Miracle" });
-  await row.getByTestId("open-novel").click();
+  // chuyển xong thì mở luôn bộ vừa chuyển
+  await expect(page).toHaveURL(/\/$/, { timeout: 60_000 });
+  await expect(page.locator("h1")).toHaveText("The Last Miracle");
+  await page.goto("/novels/");
+  await expect(page.getByTestId("cloud-novels").locator(".list-item", { hasText: "The Last Miracle" })).toContainText("200 chương");
   await page.goto("/library/");
   await expect(page.getByTestId("chapter-tree").locator(".tree-ch")).toHaveCount(200);
   // bộ khác vẫn tách biệt
-  await page.goto("/settings/");
+  await page.getByTestId("switch-novel").click();
   await page.getByTestId("cloud-novels").locator(".list-item", { hasText: "Bộ thử Cloudflare" }).getByTestId("open-novel").click();
   await page.goto("/library/");
   await expect(page.getByTestId("chapter-tree").locator(".tree-ch")).toHaveCount(1);
+});
+
+test("nháp tự lưu lên R2: mở trên thiết bị khác (trình duyệt mới) vẫn thấy; menu gọn; đổi tên", async ({ page, browser }) => {
+  await createNovel(page, "Bộ nháp R2");
+  // menu chế độ Cloudflare: không còn mục GitHub/kết nối
+  const nav = page.locator("nav.nav");
+  await expect(nav).toContainText("Bộ truyện");
+  await expect(nav).not.toContainText("Nhập & xuất");
+  await expect(nav).not.toContainText("Gói tài liệu");
+  await expect(nav).not.toContainText("kết nối");
+  await page.goto("/settings/");
+  await expect(page).toHaveURL(/\/novels\/$/);
+  await page.goto("/library/");
+  await expect(page.getByTestId("lib-import")).toBeVisible();
+  await page.getByRole("button", { name: "+ Chương mới" }).click();
+  await page.getByRole("dialog").getByRole("textbox").fill("Chương nháp");
+  await page.getByRole("button", { name: "Tạo chương" }).click();
+  await expect(page.getByTestId("chapter-title")).toHaveValue("Chương nháp");
+  const chapterUrl = page.url();
+  await page.getByTestId("editor-content").click();
+  await page.keyboard.insertText("Câu này chưa lưu phiên bản — chỉ là nháp.");
+  await expect(page.getByTestId("save-state")).toContainText("Nháp đã tự lưu lên Cloudflare", { timeout: 15_000 });
+
+  // "thiết bị khác": trình duyệt mới, không có IndexedDB/localStorage
+  const other = await browser.newContext();
+  const p2 = await other.newPage();
+  await p2.goto("/novels/");
+  await p2.getByTestId("cloud-novels").locator(".list-item", { hasText: "Bộ nháp R2" }).getByTestId("open-novel").click();
+  await expect(p2).toHaveURL(/\/$/);
+  await p2.goto(chapterUrl);
+  await expect(p2.getByTestId("editor-content")).toContainText("Câu này chưa lưu phiên bản — chỉ là nháp.");
+  await expect(p2.getByTestId("save-state")).toHaveAttribute("data-state", "local");
+  await other.close();
+
+  // lưu phiên bản thì nháp trên R2 bị xoá
+  await page.getByTestId("save-version").click();
+  await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "synced");
+  const novelId = await page.evaluate(() => JSON.parse(localStorage.getItem("nb-connection")!).novelId as string);
+  const chId = new URL(chapterUrl).searchParams.get("id");
+  await expect.poll(async () => page.evaluate(async ([n, c]) => (await (await fetch(`/api/novels/${n}/drafts/${c}`)).json()).draft, [novelId, chId])).toBeNull();
+
+  // đổi tên bộ truyện
+  await page.goto("/novels/");
+  const row = page.getByTestId("cloud-novels").locator(".list-item", { hasText: "Bộ nháp R2" });
+  await expect(row.getByTestId("novel-stats")).toContainText("1 chương");
+  await row.getByRole("button", { name: "Đổi tên" }).click();
+  await page.getByTestId("rename-input").fill("Bộ nháp R2 (mới)");
+  await page.getByTestId("rename-input").press("Enter");
+  await expect(page.getByTestId("cloud-novels")).toContainText("Bộ nháp R2 (mới)");
+  await expect(page.locator(".brand-title")).toHaveText("Bộ nháp R2 (mới)");
 });

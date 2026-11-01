@@ -58,6 +58,7 @@ Khi tải danh sách, trang so `blob` trong chỉ mục với blob thực trong 
 |---|---|---|
 | **Phiên bản đã lưu** | Repo (GitHub hoặc kho demo) | Nguồn chính. Mỗi lần "Lưu phiên bản" là một commit |
 | **Nháp** | IndexedDB của trình duyệt (`nb-studio/drafts`) | Chỉ trên thiết bị này. Khóa `<repoKey>::<chapterId>`, ghi kèm `baseBlob` + `baseCommit` (phiên bản gốc) |
+| **Nháp trên R2** (chỉ chế độ Cloudflare) | `novels/<id>/drafts/<chapterId>.json` | Bản sao nháp mới nhất, đẩy lên sau ~2,5 giây ngừng gõ (và khi đóng tab). Mở ở máy khác thì bản mới hơn thắng; thiết bị khác ghi bản cũ hơn bị từ chối (409). Xoá khi đã lưu phiên bản (chỉ nếu không có nháp mới hơn) |
 | **Cache** | Bộ nhớ của tab (LRU) | Chỉ dữ liệu bất biến khóa theo sha (cây, blob, chương đã parse). Mất đi cũng không sao |
 | **Token GitHub** | sessionStorage (hoặc localStorage nếu “Ghi nhớ”) | Chỉ gửi tới api.github.com |
 

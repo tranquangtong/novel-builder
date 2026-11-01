@@ -86,7 +86,7 @@ Chi tiết: [docs/SCHEMA_AND_FLOWS.md](docs/SCHEMA_AND_FLOWS.md) · Bảo mật 
 
 ## Hạn chế còn lại
 
-- **Cloudflare chưa được deploy thật.** Môi trường phát triển bị chặn mạng tới Cloudflare. Worker đã chạy E2E trên workerd (`wrangler dev`) với R2/D1 local; phần Access (JWT) đã test bằng khóa sinh trong test. Lần deploy đầu cần bạn làm theo `docs/CLOUDFLARE_SETUP.md`.
+- Worker đã deploy và Access đã bật (trang chuyển sang đăng nhập Access). Phần trong Worker sau khi đăng nhập mới chỉ được kiểm tra trên workerd (`wrangler dev`) với R2/D1 local.
 - Chuyển từ GitHub sang Cloudflare chỉ mang theo **bản chính hiện tại**, không mang lịch sử commit cũ (lịch sử vẫn nằm ở repo GitHub).
 - Ảnh chưa có phiên bản: tải ảnh mới là thêm ảnh mới; xóa thì ảnh chuyển vào thùng rác trên R2, lấy lại thủ công.
 - Đăng nhập dùng token dán tay, không có nút "Đăng nhập với GitHub", vì luồng OAuth của GitHub cần máy chủ: bước đổi mã không hỗ trợ CORS. Token hết hạn thì tạo token mới và dán lại.

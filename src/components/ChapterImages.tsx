@@ -7,10 +7,14 @@ import { useToast } from "./Toast";
 
 type Asset = { key: string; kind: string; caption: string; fileName: string; size: number; uploadedAt: string; uploadedBy: string };
 
-const KINDS = [
+export const KINDS = [
+  { v: "character", label: "Nhân vật" },
+  { v: "scenery", label: "Cảnh quan" },
+  { v: "action", label: "Cảnh hành động" },
   { v: "sketch", label: "Phác thảo" },
   { v: "illustration", label: "Minh hoạ" },
   { v: "reference", label: "Tham khảo" },
+  { v: "other", label: "Khác" },
 ];
 const kindLabel = (k: string) => KINDS.find((x) => x.v === k)?.label ?? k;
 const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif";
@@ -19,7 +23,9 @@ const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif";
 export function ChapterImages({ novelId, chapterId, canEdit, onInsert }: { novelId: string; chapterId: string; canEdit: boolean; onInsert: (markdown: string) => void }) {
   const toast = useToast();
   const input = useRef<HTMLInputElement>(null);
-  const [kind, setKind] = useState("sketch");
+  const [kind, setKind] = useState("character");
+  const [filter, setFilter] = useState("");
+  const [drag, setDrag] = useState(false);
   const [caption, setCaption] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const q = useQuery({ queryKey: ["assets", novelId, chapterId], queryFn: () => cloudFetch<{ assets: Asset[] }>(`/api/novels/${novelId}/assets?chapter=${chapterId}`) });
@@ -61,11 +67,13 @@ export function ChapterImages({ novelId, chapterId, canEdit, onInsert }: { novel
 
   return (
     <>
-      <div className="small muted">Ảnh phác thảo, minh hoạ, tham khảo cho chương này. Lưu trên Cloudflare R2, chỉ người đăng nhập mới xem được. Tối đa 15 MB/ảnh (JPG, PNG, WebP, GIF, AVIF).</div>
+      <div className="small muted">Ảnh nhân vật, cảnh quan, cảnh hành động… cho chương này. Lưu trên Cloudflare R2, chỉ người đăng nhập mới xem được. Tối đa 15 MB/ảnh (JPG, PNG, WebP, GIF, AVIF). Chọn hoặc kéo-thả nhiều ảnh một lúc.</div>
       {canEdit && (
-        <div className="grid" style={{ gap: 8 }}>
+        <div className={`grid image-drop${drag ? " over" : ""}`} style={{ gap: 8 }}
+          onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
+          onDrop={(e) => { e.preventDefault(); setDrag(false); void upload(e.dataTransfer.files); }}>
           <div className="row">
-            <select className="select" style={{ maxWidth: 140 }} value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Loại ảnh">
+            <select className="select" style={{ maxWidth: 170 }} value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Loại ảnh">
               {KINDS.map((k) => <option key={k.v} value={k.v}>{k.label}</option>)}
             </select>
             <input className="input grow" placeholder="Chú thích (tuỳ chọn)" value={caption} onChange={(e) => setCaption(e.target.value)} />
@@ -76,8 +84,16 @@ export function ChapterImages({ novelId, chapterId, canEdit, onInsert }: { novel
       )}
       {q.isLoading && <span className="spinner" />}
       {q.data && !q.data.assets.length && <div className="small muted">Chưa có ảnh nào.</div>}
-      <div className="grid" style={{ gap: 10 }} data-testid="image-list">
-        {q.data?.assets.map((a) => (
+      {q.data && q.data.assets.length > 0 && (
+        <div className="row" style={{ gap: 4 }} data-testid="image-filter">
+          <button className={`btn sm ${filter === "" ? "" : "ghost"}`} onClick={() => setFilter("")}>Tất cả ({q.data.assets.length})</button>
+          {KINDS.filter((k) => q.data.assets.some((a) => a.kind === k.v)).map((k) => (
+            <button key={k.v} className={`btn sm ${filter === k.v ? "" : "ghost"}`} onClick={() => setFilter(k.v)}>{k.label} ({q.data.assets.filter((a) => a.kind === k.v).length})</button>
+          ))}
+        </div>
+      )}
+      <div className="image-grid" data-testid="image-list">
+        {q.data?.assets.filter((a) => !filter || a.kind === filter).map((a) => (
           <figure key={a.key} className="version-item" style={{ flexDirection: "column", margin: 0 }}>
             <a href={assetUrl(a.key)} target="_blank" rel="noreferrer" style={{ display: "block", width: "100%" }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- ảnh riêng tư từ R2, không qua tối ưu ảnh của Next */}

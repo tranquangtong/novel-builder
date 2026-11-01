@@ -380,3 +380,8 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px
 }
 .prose img { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 1em auto; }
 .panel-tabs .tab { padding: 10px 7px; font-size: 12px; }
+.chapter-gallery { margin-top: 48px; padding-top: 20px; border-top: 1px dashed var(--line-strong); display: flex; flex-direction: column; gap: 10px; font-family: var(--font-ui); }
+.chapter-gallery h3 { font-size: 15px; }
+.image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.image-drop { padding: 10px; border: 1px dashed var(--line-strong); border-radius: 8px; }
+.image-drop.over { background: var(--accent-soft, rgba(80,120,200,.08)); border-color: var(--accent); }

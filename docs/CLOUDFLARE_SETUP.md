@@ -85,12 +85,14 @@ Rồi **Re-run** workflow.
 ## 7. Dùng thử và chuyển bản thảo
 
 1. Mở `https://novel-builder.<subdomain>.workers.dev` → đăng nhập bằng email (nhập mã OTP).
-2. Trang **Bộ truyện & kết nối** hiện khu vực **Bộ truyện trên Cloudflare**, ghi tên bạn kèm nhãn *biên tập*.
-3. Trước khi chuyển: nhập các đề xuất còn mở trên GitHub (#2 Ch 13, #3 bỏ găng tay) vào bản chính, vì chỉ bản chính được chuyển.
-4. Mở **Chuyển một bộ truyện từ repo GitHub sang Cloudflare**:
-   - Repo: `tranquangtong/novel-thelastmiracle-manuscript`
-   - Token GitHub: chỉ cần quyền đọc; dùng một lần, không được lưu.
-5. Bấm **Mở** ở bộ truyện vừa chuyển → kiểm tra Thư viện, mở thử vài chương.
+2. Trang mở thẳng vào **Bộ truyện** (menu trái, mục đầu tiên), ghi tên bạn kèm nhãn *biên tập*. Đây là nơi quản lý mọi bộ truyện: mở, tạo mới, đổi tên, xem số Act/chương/chữ.
+3. Trước khi chuyển: nhập các đề xuất còn mở trên GitHub vào bản chính, vì chỉ bản chính được chuyển.
+4. Khi chưa có bộ nào, khung **Chuyển một bộ truyện từ repo GitHub sang Cloudflare** tự mở:
+   - Repo: điền sẵn `tranquangtong/novel-thelastmiracle-manuscript`.
+   - Token GitHub: chỉ cần quyền đọc; dùng một lần, không được lưu. (Token cũ đã dán ở github.io **không** dùng lại được vì trang Cloudflare là một địa chỉ khác.)
+5. Chuyển xong, trang tự mở bộ vừa chuyển → kiểm tra Thư viện, mở thử vài chương.
+
+`https://tranquangtong.github.io/novel-builder` từ giờ chỉ chuyển hướng sang trang Cloudflare (khi đã đặt biến `CF_D1_DATABASE_ID`). Muốn đổi địa chỉ đích, đặt biến `CLOUDFLARE_URL`.
 
 Từ đây bộ truyện trên Cloudflare là **bản chính**. Repo GitHub cũ giữ làm bản lưu trữ, vì lịch sử cũ vẫn nằm ở đó.
 
@@ -111,7 +113,9 @@ Thêm email của họ vào policy **Allow** ở bước 6, **không** thêm và
 
 ## 10. Sau khi chuyển xong
 
-- Muốn tắt GitHub Pages: Settings → Pages → Source: None. Workflow vẫn build nhưng sẽ báo lỗi ở job `deploy-pages`; báo tôi để tôi gỡ job đó.
+- GitHub Pages giờ chỉ là trang chuyển hướng. Muốn tắt hẳn: Settings → Pages → Source: None (job `deploy-pages` sẽ báo lỗi; báo tôi để gỡ job đó).
+- **Tự lưu**: trong lúc gõ, nháp được lưu vào trình duyệt (ngay) và lên R2 (`novels/<id>/drafts/<chương>.json`, sau ~2,5 giây). Mở chương ở máy khác vẫn thấy nháp. Bấm **Lưu phiên bản** để tạo một phiên bản trong lịch sử; khi đó nháp trên R2 được xoá.
+- **Ảnh theo chương**: mở chương → nút **Hình ảnh** (hoặc cuộn xuống cuối chương) → chọn loại (Nhân vật, Cảnh quan, Cảnh hành động, Phác thảo, Minh hoạ, Tham khảo, Khác), chọn hoặc kéo-thả ảnh. **Chèn vào chương** để ảnh hiện trong nội dung.
 - Ảnh đã xóa nằm trong R2 ở `novels/<id>/trash/…`, có thể lấy lại thủ công trong dashboard R2.
 
 ## Dung lượng ước tính (gói miễn phí)

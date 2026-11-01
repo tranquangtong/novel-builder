@@ -10,7 +10,8 @@ import { GitHubStore } from "@/lib/store/github/github-store";
 import { mapLimit } from "@/lib/core/service";
 import { useToast } from "./Toast";
 
-type Novel = { id: string; title: string; created_at: string; created_by: string };
+type Stats = { chapters: number; words: number; acts: number; headSha: string } | null;
+type Novel = { id: string; title: string; created_at: string; created_by: string; stats?: Stats };
 
 /** Danh sách bộ truyện trên Cloudflare: mở, tạo mới, chuyển từ repo GitHub sang. */
 export function CloudNovels({ me }: { me: CloudMe }) {
@@ -18,12 +19,29 @@ export function CloudNovels({ me }: { me: CloudMe }) {
   const router = useRouter();
   const qc = useQueryClient();
   const toast = useToast();
-  const novels = useQuery({ queryKey: ["cloud-novels"], queryFn: () => cloudFetch<{ novels: Novel[] }>("/api/novels") });
+  const novels = useQuery({ queryKey: ["cloud-novels"], queryFn: () => cloudFetch<{ novels: Novel[] }>("/api/novels?stats=1") });
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [mig, setMig] = useState({ repo: DEFAULT_REPO, branch: "main", token: "", title: "" });
   const [progress, setProgress] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; title: string } | null>(null);
   const editor = me.role === "editor";
+
+  const rename = async () => {
+    if (!renaming?.title.trim()) return;
+    setBusy(true);
+    try {
+      const r = await cloudFetch<{ id: string; title: string }>(`/api/novels/${renaming.id}`, "PATCH", { title: renaming.title.trim() });
+      if (conn?.mode === "cloud" && conn.novelId === r.id) saveConnection({ mode: "cloud", novelId: r.id, novelTitle: r.title });
+      setRenaming(null);
+      toast("Đã đổi tên.");
+      await qc.invalidateQueries();
+    } catch (e) {
+      toast(`Không đổi tên được: ${e instanceof Error ? e.message : e}`, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const open = (n: { id: string; title: string }) => {
     saveConnection({ mode: "cloud", novelId: n.id, novelTitle: n.title });
@@ -73,6 +91,7 @@ export function CloudNovels({ me }: { me: CloudMe }) {
       setProgress(`Xong: ${r.chapters} chương, ${paths.length} file, từ phiên bản ${head.slice(0, 7)} của ${m[1]}/${m[2]}.`);
       setMig({ ...mig, token: "" });
       await novels.refetch();
+      open(r);
     } catch (e) {
       setProgress(null);
       toast(`Không chuyển được: ${e instanceof Error ? e.message : e}`, "error");
@@ -85,21 +104,32 @@ export function CloudNovels({ me }: { me: CloudMe }) {
     <div className="grid" style={{ gap: 16, marginBottom: 16 }}>
       <div className="card card-pad">
         <div className="row" style={{ marginBottom: 8 }}>
-          <h2 style={{ margin: 0, flex: 1 }}>Bộ truyện trên Cloudflare</h2>
+          <h2 style={{ margin: 0, flex: 1 }}>Tất cả bộ truyện</h2>
           <span className="small muted">{me.name} · {editor ? <span className="chip ok">biên tập</span> : <span className="chip">chỉ đọc</span>}</span>
         </div>
         {novels.isLoading && <span className="spinner" />}
         {novels.error && <div className="banner danger"><div className="small">{(novels.error as Error).message}</div></div>}
-        {novels.data && !novels.data.novels.length && <div className="small muted">Chưa có bộ truyện nào.</div>}
+        {novels.data && !novels.data.novels.length && <div className="small muted">Chưa có bộ truyện nào trên Cloudflare. Tạo mới bên dưới, hoặc chuyển bộ đang nằm trong repo GitHub sang.</div>}
         <div className="list" data-testid="cloud-novels">
           {novels.data?.novels.map((n) => {
             const current = conn?.mode === "cloud" && conn.novelId === n.id;
             return (
               <div key={n.id} className={`list-item ${current ? "active" : ""}`}>
-                <span style={{ flex: 1 }}>
-                  <span style={{ fontWeight: 500, display: "block" }}>{n.title}</span>
-                  <span className="small muted">tạo {fmtDate(n.created_at)} · {n.created_by}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  {renaming?.id === n.id ? (
+                    <span className="row" style={{ gap: 6 }}>
+                      <input className="input grow" value={renaming.title} autoFocus onChange={(e) => setRenaming({ ...renaming, title: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") void rename(); if (e.key === "Escape") setRenaming(null); }} data-testid="rename-input" />
+                      <button className="btn sm primary" disabled={busy} onClick={() => void rename()}>Lưu</button>
+                      <button className="btn sm ghost" onClick={() => setRenaming(null)}>Huỷ</button>
+                    </span>
+                  ) : (
+                    <span style={{ fontWeight: 500, display: "block" }}>{n.title}</span>
+                  )}
+                  <span className="small muted" data-testid="novel-stats">
+                    {n.stats ? `${n.stats.acts} Act · ${n.stats.chapters} chương · ${n.stats.words.toLocaleString("vi-VN")} chữ · ` : ""}tạo {fmtDate(n.created_at)} · {n.created_by}
+                  </span>
                 </span>
+                {editor && renaming?.id !== n.id && <button className="btn sm ghost" onClick={() => setRenaming({ id: n.id, title: n.title })}>Đổi tên</button>}
                 {current ? <span className="chip accent">đang mở</span> : <button className="btn sm" onClick={() => open(n)} data-testid="open-novel">Mở</button>}
               </div>
             );
@@ -114,7 +144,7 @@ export function CloudNovels({ me }: { me: CloudMe }) {
       </div>
 
       {editor && (
-        <details className="card card-pad">
+        <details className="card card-pad" open={novels.data ? novels.data.novels.length === 0 : undefined} data-testid="migrate">
           <summary style={{ cursor: "pointer", fontWeight: 600 }}>Chuyển một bộ truyện từ repo GitHub sang Cloudflare</summary>
           <p className="small muted">Trình duyệt đọc toàn bộ file trong <code>content/</code> và <code>AGENTS.md</code> ở bản chính của repo, rồi tạo một bộ truyện mới trên Cloudflare với đúng nội dung đó (nguyên văn). Lịch sử cũ vẫn ở GitHub, không được chuyển. Token chỉ dùng cho lần chuyển này, không được lưu. Hãy nhập các đề xuất (PR) cần giữ vào bản chính trước khi chuyển.</p>
           <div className="grid cols-2" style={{ gap: 10 }}>

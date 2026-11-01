@@ -5,7 +5,9 @@ import { exportMarkdown } from "@/lib/client/local-api";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, fmtDate, relTime, short } from "@/lib/client/api";
+import { api, ApiError, cloudFetch, fmtDate, relTime, short } from "@/lib/client/api";
+
+type ServerDraft = { baseBlob: string | null; baseCommit: string; body: string; meta: Record<string, unknown>; updatedAt: number; device: string };
 import { useCloudMe, useProject } from "@/lib/client/hooks";
 import { useConnection } from "@/lib/client/connection";
 import { ChapterImages } from "./ChapterImages";
@@ -46,13 +48,18 @@ export function ChapterEditor({ id }: { id: string }) {
   const [body, setBody] = useState("");
   const [meta, setMeta] = useState<Meta | null>(null);
   const [mode, setMode] = useState<"write" | "read">("write");
-  const [panel, setPanel] = useState<"info" | "versions" | "canon" | "notes" | "review" | "images" | null>("info");
+  const [panel, setPanel] = useState<"info" | "versions" | "canon" | "notes" | "review" | null>("info");
   const [saveState, setSaveState] = useState<SaveState>({ kind: "synced" });
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
   const [conflict, setConflict] = useState<Conflict | null>(null);
   const [otherTab, setOtherTab] = useState<Draft | null>(null);
   const [compare, setCompare] = useState<null | { title: string; before: string; after: string; beforeLabel: string; afterLabel: string; extra?: { before: string; after: string; label: string } }>(null);
   const [noteOpen, setNoteOpen] = useState(false);
+  /** Lần cuối nháp được tự lưu lên Cloudflare R2 (chế độ cloud). */
+  const [cloudDraftAt, setCloudDraftAt] = useState<number | null>(null);
+  const [cloudDraftErr, setCloudDraftErr] = useState<string | null>(null);
+  /** Nháp đang chờ đẩy lên R2 — để gửi nốt (keepalive) khi đóng tab. */
+  const pendingCloud = useRef<{ url: string; payload: string } | null>(null);
   const [note, setNote] = useState("");
   const lastSynced = useRef(0);
   const savingRef = useRef(false);
@@ -82,7 +89,15 @@ export function ChapterEditor({ id }: { id: string }) {
         const v = await api<ChapterVersion>(`/api/chapters/${id}`);
         if (!alive) return;
         const k = draftKey(v.repo, id);
-        const d = await getDraft(k).catch(() => undefined);
+        let d = await getDraft(k).catch(() => undefined);
+        // Chế độ Cloudflare: nháp cũng được tự lưu trên R2 (dùng được từ thiết bị khác) → lấy bản mới nhất.
+        if (cloudNovel) {
+          const sd = await cloudFetch<{ draft: ServerDraft | null }>(`/api/novels/${cloudNovel}/drafts/${id}`).then((r) => r.draft).catch(() => null);
+          if (sd && (!d || sd.updatedAt > d.updatedAt)) {
+            d = { key: k, repoKey: v.repo, chapterId: id, baseBlob: sd.baseBlob, baseCommit: sd.baseCommit, body: sd.body, meta: sd.meta as Draft["meta"], updatedAt: sd.updatedAt, tabId: sd.device };
+          }
+          if (sd) setCloudDraftAt(sd.updatedAt);
+        }
         setServer(v);
         lastSynced.current = Date.now();
         if (d && (d.body !== v.doc.body || !metaEq(d.meta, metaOf(v.doc.meta)) || d.baseBlob !== v.blob)) {
@@ -103,7 +118,7 @@ export function ChapterEditor({ id }: { id: string }) {
     return () => {
       alive = false;
     };
-  }, [id, apply]);
+  }, [id, apply, cloudNovel]);
 
   const serverMeta = server ? metaOf(server.doc.meta) : null;
   const dirty = loaded && (work!.blob !== server!.blob || body !== server!.doc.body || !metaEq(meta!, serverMeta!));
@@ -135,9 +150,48 @@ export function ChapterEditor({ id }: { id: string }) {
     return () => clearTimeout(t);
   }, [loaded, body, meta, work, persist, otherTab]);
 
+  // ---------- Cloudflare: tự lưu nháp lên R2 (không tạo phiên bản) ----------
+  useEffect(() => {
+    if (!cloudNovel || viewer || !loaded || otherTab || savingRef.current) return;
+    const url = `/api/novels/${cloudNovel}/drafts/${id}`;
+    pendingCloud.current = dirty ? { url, payload: JSON.stringify({ baseBlob: work!.blob, baseCommit: work!.commit, body, meta, updatedAt: Date.now(), device: tabId }) } : null;
+    const t = setTimeout(async () => {
+      try {
+        if (dirty) {
+          const updatedAt = Date.now();
+          await cloudFetch(url, "PUT", { baseBlob: work!.blob, baseCommit: work!.commit, body, meta, updatedAt, device: tabId });
+          pendingCloud.current = null;
+          setCloudDraftAt(updatedAt);
+          setCloudDraftErr(null);
+        } else if (cloudDraftAt) {
+          // chỉ xoá đúng nháp mình đã thấy, không xoá nháp mới hơn từ thiết bị khác
+          await cloudFetch(`${url}?ifUpdatedAt=${cloudDraftAt}`, "DELETE");
+          setCloudDraftAt(null);
+        }
+      } catch (e) {
+        if (e instanceof ApiError && e.code === "draft_newer") {
+          const sd = e.data.draft as ServerDraft;
+          setOtherTab({ key: key!, repoKey: repoKey!, chapterId: id, baseBlob: sd.baseBlob, baseCommit: sd.baseCommit, body: sd.body, meta: sd.meta as Draft["meta"], updatedAt: sd.updatedAt, tabId: sd.device });
+        } else setCloudDraftErr(e instanceof Error ? e.message : String(e));
+      }
+    }, 2500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ đẩy lên khi nội dung đổi
+  }, [cloudNovel, viewer, loaded, otherTab, body, meta, work, dirty]);
+
   useEffect(() => {
     const flush = () => {
-      if (document.visibilityState === "hidden" && !otherTab) void persist();
+      if (document.visibilityState !== "hidden" || otherTab) return;
+      void persist();
+      const p = pendingCloud.current;
+      if (p) {
+        pendingCloud.current = null;
+        try {
+          void fetch(p.url, { method: "PUT", keepalive: true, credentials: "same-origin", headers: { "content-type": "application/json" }, body: p.payload }).catch(() => {});
+        } catch {
+          /* nháp quá lớn cho keepalive: vẫn còn trong IndexedDB */
+        }
+      }
     };
     document.addEventListener("visibilitychange", flush);
     window.addEventListener("pagehide", flush);
@@ -195,6 +249,7 @@ export function ChapterEditor({ id }: { id: string }) {
       return;
     }
     savingRef.current = true;
+    const saveStartedAt = Date.now();
     setSaveState({ kind: "saving" });
     const savedBody = body, savedMeta = meta!;
     await persist();
@@ -206,6 +261,11 @@ export function ChapterEditor({ id }: { id: string }) {
       setConflict(null);
       setRestoredAt(null);
       await deleteDraftIfMatches(key, savedBody, JSON.stringify(savedMeta)).catch(() => {});
+      if (cloudNovel) {
+        // Nháp trên R2 đã thành phiên bản → xóa (trừ khi có nháp mới hơn được gõ trong lúc lưu)
+        await cloudFetch(`/api/novels/${cloudNovel}/drafts/${id}?ifUpdatedAt=${saveStartedAt}`, "DELETE").catch(() => {});
+        setCloudDraftAt(null);
+      }
       tabChannel()?.postMessage({ type: "saved", key, tabId, blob: r.blob } satisfies TabMessage);
       window.dispatchEvent(new Event("nb:drafts-changed"));
       setSaveState({ kind: "synced", at: Date.now() });
@@ -228,7 +288,7 @@ export function ChapterEditor({ id }: { id: string }) {
     } finally {
       savingRef.current = false;
     }
-  }, [loaded, key, conflict, body, meta, persist, id, work, server, toast, repoKey, qc, tabId]);
+  }, [loaded, key, conflict, body, meta, persist, id, work, server, toast, repoKey, qc, tabId, cloudNovel]);
 
   // ---------- xử lý xung đột ----------
   const openCompare = async () => {
@@ -284,6 +344,7 @@ export function ChapterEditor({ id }: { id: string }) {
             <button className={`tab ${mode === "write" ? "active" : ""}`} onClick={() => setMode("write")}>Viết</button>
             <button className={`tab ${mode === "read" ? "active" : ""}`} onClick={() => setMode("read")} data-testid="mode-read">Đọc</button>
           </div>
+          {cloudNovel && <button className="btn sm" data-testid="goto-gallery" onClick={() => document.getElementById("chapter-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Hình ảnh</button>}
           <button className="btn sm" onClick={() => void exportMarkdown(id)}>Xuất .md</button>
           <button className="btn sm" onClick={() => setPanel((p) => (p ? null : "info"))} aria-pressed={!!panel}>{panel ? "Ẩn panel" : "Hiện panel"}</button>
           <button className="btn primary" disabled={!loaded || !dirty || saveState.kind === "saving" || viewer} onClick={() => void save()} data-testid="save-version" title="Tạo một phiên bản trên kho (Ctrl/⌘+S)">
@@ -363,6 +424,12 @@ export function ChapterEditor({ id }: { id: string }) {
               <MarkdownEditor ref={editor} initial="" onChange={setBody} onSave={() => void save()} readOnly={!loaded || viewer} />
             </div>
             {mode === "read" && <div data-testid="read-view"><Markdown text={body} /></div>}
+            {cloudNovel && (
+              <section className="chapter-gallery" id="chapter-gallery" data-testid="chapter-gallery">
+                <h3>Hình ảnh của chương</h3>
+                <ChapterImages novelId={cloudNovel} chapterId={id} canEdit={!viewer} onInsert={(md) => { setMode("write"); editor.current?.insertBlock(md); }} />
+              </section>
+            )}
           </div>
         </div>
         <div className="statusbar">
@@ -371,7 +438,13 @@ export function ChapterEditor({ id }: { id: string }) {
           <span className="save-state" data-testid="save-state" data-state={saveState.kind}>
             <span className={`pip ${saveState.kind}`} />
             {saveState.kind === "synced" && `Đã lưu ${storageLabel(repoKey).at} · phiên bản ${short(work?.commit)}`}
-            {saveState.kind === "local" && `Nháp chỉ có trên thiết bị này · tự lưu ${saveState.at ? relTime(saveState.at) : ""} · chưa lưu phiên bản`}
+            {saveState.kind === "local" && (cloudNovel
+              ? cloudDraftErr
+                ? `Nháp mới lưu trên thiết bị này (chưa lên được Cloudflare: ${cloudDraftErr}) · chưa lưu phiên bản`
+                : cloudDraftAt
+                  ? `Nháp đã tự lưu lên Cloudflare ${relTime(cloudDraftAt)} · chưa lưu phiên bản`
+                  : "Nháp đang chờ tự lưu lên Cloudflare · chưa lưu phiên bản"
+              : `Nháp chỉ có trên thiết bị này · tự lưu ${saveState.at ? relTime(saveState.at) : ""} · chưa lưu phiên bản`)}
             {saveState.kind === "saving" && "Đang lưu phiên bản…"}
             {saveState.kind === "error" && <span style={{ color: "var(--danger)" }}>{saveState.msg}</span>}
           </span>
@@ -380,9 +453,9 @@ export function ChapterEditor({ id }: { id: string }) {
       {panel && (
         <aside className="panel" aria-label="Panel phụ">
           <div className="panel-tabs">
-            {(["info", "versions", "canon", "notes", "review", ...(cloudNovel ? (["images"] as const) : [])] as const).map((p) => (
+            {(["info", "versions", "canon", "notes", "review"] as const).map((p) => (
               <button key={p} className={`tab ${panel === p ? "active" : ""}`} onClick={() => setPanel(p)}>
-                {p === "info" ? "Thông tin" : p === "versions" ? "Phiên bản" : p === "canon" ? "Canon" : p === "notes" ? "Ghi chú" : p === "images" ? "Ảnh" : "Review"}
+                {p === "info" ? "Thông tin" : p === "versions" ? "Phiên bản" : p === "canon" ? "Canon" : p === "notes" ? "Ghi chú" : "Review"}
               </button>
             ))}
           </div>
@@ -400,7 +473,6 @@ export function ChapterEditor({ id }: { id: string }) {
             {panel === "canon" && <CanonPanel />}
             {panel === "notes" && <NotesPanel id={id} />}
             {panel === "review" && <ReviewPanel id={id} />}
-            {panel === "images" && cloudNovel && <ChapterImages novelId={cloudNovel} chapterId={id} canEdit={!viewer} onInsert={(md) => { setMode("write"); editor.current?.insertBlock(md); }} />}
           </div>
         </aside>
       )}

@@ -89,3 +89,22 @@ Khác biệt có thể gặp với GitHub thật: `mergeable` có thể là `nul
 **CHƯA chạy thật**, cần bạn làm theo `docs/CLOUDFLARE_SETUP.md`. Những điểm có thể khác với bản local:
 - Access ở cấp Worker có gửi header `Cf-Access-Jwt-Assertion` tới Worker hay không. Nếu không, API sẽ trả 401 "Chưa đăng nhập qua Cloudflare Access", báo tôi để chuyển sang ứng dụng Access theo hostname.
 - Độ trễ thật giữa R2 và D1.
+
+## Bổ sung 01/11/2026 (2): trang Bộ truyện, tự lưu nháp lên R2, ảnh theo chương, menu gọn
+
+| Kiểm tra | Kết quả |
+|---|---|
+| `npm run lint`, `npm run typecheck` | sạch |
+| `npm test` | **37/37** (thêm: nháp R2, đổi tên + thống kê, loại ảnh) |
+| `npx playwright test` (bản tĩnh) | **25/25** |
+| `npx playwright test -c playwright.cloud.config.ts` (workerd) | **5/5** |
+
+E2E mới trên workerd:
+- Chưa chọn bộ truyện thì vào trang **Bộ truyện**. `/settings` trên Cloudflare chuyển về trang này. Menu không còn "Nhập & xuất", "Gói tài liệu", "kết nối".
+- Gõ trong chương → "Nháp đã tự lưu lên Cloudflare". Mở **trình duyệt mới** (không IndexedDB) vẫn thấy nháp. Lưu phiên bản thì nháp trên R2 bị xoá. Đổi tên bộ truyện cập nhật danh sách và tiêu đề.
+- Ảnh loại Nhân vật / Cảnh quan, lọc theo loại, chèn vào chương, hiển thị khi đọc.
+- Chuyển 200 chương từ GitHub (API giả) xong thì tự mở bộ vừa chuyển; thống kê "200 chương".
+
+Lỗi tìm ra khi chạy test và đã sửa: đổi kết nối xoá cache truy vấn, làm trang Kết nối bị tháo ra/gắn lại và mất kết quả kiểm tra. Gate giờ ghi nhớ môi trường (Cloudflare hay trang tĩnh).
+
+Đã kiểm tra trên mạng thật: `https://novel-builder.tongquangtran.workers.dev` trả 302 sang trang đăng nhập Cloudflare Access (`tqtong.cloudflareaccess.com`). Nghĩa là Worker đã deploy và Access đang bảo vệ.
