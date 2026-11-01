@@ -6,13 +6,14 @@
  *  - Một "chữ" là một cụm ký tự có ít nhất một chữ cái hoặc chữ số. Các cụm chỉ gồm
  *    ký hiệu Markdown/dấu câu như `#`, `***`, `>`, `—`, `-` không được tính.
  *  - Comment HTML `<!-- ... -->` (ghi chú ẩn) không được tính.
+ *  - Ảnh chèn trong chương `![chú thích](đường-dẫn)` không được tính (không phải văn xuôi).
  *  - Tiếng Việt: mỗi âm tiết cách nhau bằng khoảng trắng là một chữ ("tiểu thuyết" = 2),
  *    giống cách Google Docs đếm.
  */
 const HAS_WORD_CHAR = /[\p{L}\p{N}]/u;
 
 export function countWords(body: string): number {
-  const text = body.replace(/<!--[\s\S]*?-->/g, " ");
+  const text = body.replace(/<!--[\s\S]*?-->/g, " ").replace(/!\[[^\]\n]*\]\([^)\n]*\)/g, " ");
   let n = 0;
   for (const token of text.split(/\s+/u)) {
     if (token && HAS_WORD_CHAR.test(token)) n++;

@@ -378,3 +378,5 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px
   .review-cols { flex: 1; min-height: 0; align-items: stretch; }
   .review-col { min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; padding: 2px 6px 24px 2px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 }
+.prose img { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 1em auto; }
+.panel-tabs .tab { padding: 10px 7px; font-size: 12px; }

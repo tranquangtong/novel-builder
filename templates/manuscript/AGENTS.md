@@ -90,3 +90,43 @@ source_commit: <commit sha>
 ```
 
 Lấy blob sha bằng `git rev-parse HEAD:content/chapters/<id>.md` hoặc từ `content/index.json`.
+
+## 8. Khi bản thảo nằm trên Cloudflare (không có repo git)
+
+Bộ truyện trên Cloudflare không có repo git để clone. Agent đọc và đề xuất qua API của
+trang, bằng **service token** của Cloudflare Access (tác giả cấp riêng cho agent):
+
+```
+CF-Access-Client-Id: <client id>
+CF-Access-Client-Secret: <client secret>
+```
+
+Quy tắc ở các mục 2–7 vẫn giữ nguyên. Các thao tác dành cho agent:
+
+| Việc | Gọi |
+|---|---|
+| Danh sách bộ truyện | `GET /api/novels` |
+| Chỉ mục chương, Act (không có nội dung) | `GET /api/novels/<id>/project` |
+| Đọc một chương | `GET /api/novels/<id>/chapters/<chapter_id>` (thêm `?commit=<sha>` để đọc phiên bản cũ) |
+| Đọc file bất kỳ (canon, outline…) | `GET /api/novels/<id>/file?path=content/...` |
+| Liệt kê file trong một thư mục | `GET /api/novels/<id>/files?prefix=content/canon/` |
+| Lịch sử | `GET /api/novels/<id>/history` |
+| Ảnh của chương | `GET /api/novels/<id>/assets?chapter=<chapter_id>` |
+| **Mở đề xuất** | `POST /api/novels/<id>/agent/proposals` |
+| Bình luận vào đề xuất | `POST /api/novels/<id>/proposals/<n>/comment` `{"body": "..."}` |
+
+Mở đề xuất: gửi **nội dung đầy đủ** của từng file đã sửa (cả frontmatter), không gửi diff.
+`baseCommit` là commit bạn đã đọc (lấy từ `headSha` của `/project`); ứng dụng sẽ báo xung đột
+nếu bản chính đã sửa cùng file.
+
+```json
+{
+  "title": "Continuity Ch 12: …",
+  "body": "Mục đích… Chương bị ảnh hưởng… Đã đọc… Thay đổi canon…",
+  "baseCommit": "<headSha>",
+  "changes": { "content/chapters/ch_xxxxxxxxxx.md": "---\nid: …\n---\nNội dung…\n" }
+}
+```
+
+Agent **không** thể lưu thẳng vào bản chính, nhập đề xuất hay xóa ảnh. Tác giả duyệt và
+nhập đề xuất trên trang.

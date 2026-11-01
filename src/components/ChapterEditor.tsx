@@ -1,11 +1,14 @@
 "use client";
+import { storageLabel } from "@/lib/client/links";
 import { proposalHref } from "@/lib/client/links";
 import { exportMarkdown } from "@/lib/client/local-api";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, fmtDate, relTime, short } from "@/lib/client/api";
-import { useProject } from "@/lib/client/hooks";
+import { useCloudMe, useProject } from "@/lib/client/hooks";
+import { useConnection } from "@/lib/client/connection";
+import { ChapterImages } from "./ChapterImages";
 import { deleteDraft, deleteDraftIfMatches, draftKey, getDraft, newTabId, putDraftGuarded, tabChannel, type Draft, type TabMessage } from "@/lib/client/drafts";
 import { countWords } from "@/lib/domain/wordcount";
 import { CHAPTER_STATUSES, STATUS_LABEL, type ChapterMeta, type ChapterVersion, type CommitInfo, type PullSummary } from "@/lib/domain/types";
@@ -25,6 +28,11 @@ type Conflict = { reason: "draft-base" | "save" | "external"; server: ChapterVer
 
 export function ChapterEditor({ id }: { id: string }) {
   const project = useProject();
+  const conn = useConnection();
+  const cloudMe = useCloudMe();
+  const cloudNovel = conn?.mode === "cloud" ? conn.novelId : null;
+  /** Người chỉ có quyền đọc (Cloudflare Access cho vào nhưng không nằm trong danh sách biên tập). */
+  const viewer = !!cloudNovel && cloudMe.data?.role !== undefined && cloudMe.data.role !== "editor";
   const toast = useToast();
   const qc = useQueryClient();
   const editor = useRef<EditorHandle>(null);
@@ -38,7 +46,7 @@ export function ChapterEditor({ id }: { id: string }) {
   const [body, setBody] = useState("");
   const [meta, setMeta] = useState<Meta | null>(null);
   const [mode, setMode] = useState<"write" | "read">("write");
-  const [panel, setPanel] = useState<"info" | "versions" | "canon" | "notes" | "review" | null>("info");
+  const [panel, setPanel] = useState<"info" | "versions" | "canon" | "notes" | "review" | "images" | null>("info");
   const [saveState, setSaveState] = useState<SaveState>({ kind: "synced" });
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
   const [conflict, setConflict] = useState<Conflict | null>(null);
@@ -51,7 +59,6 @@ export function ChapterEditor({ id }: { id: string }) {
   const loaded = !!(server && work && meta);
   const repoKey = server?.repo;
   const key = repoKey ? draftKey(repoKey, id) : null;
-  const isDemo = repoKey === "demo";
   const target = project.data?.project.word_target ?? { min: 2500, max: 3000 };
   const summary = project.data?.chapters.find((c) => c.id === id);
 
@@ -202,7 +209,7 @@ export function ChapterEditor({ id }: { id: string }) {
       tabChannel()?.postMessage({ type: "saved", key, tabId, blob: r.blob } satisfies TabMessage);
       window.dispatchEvent(new Event("nb:drafts-changed"));
       setSaveState({ kind: "synced", at: Date.now() });
-      toast(`Đã lưu phiên bản ${short(r.commitSha)} ${isDemo ? "vào kho demo" : "lên GitHub"}.`);
+      toast(`Đã lưu phiên bản ${short(r.commitSha)} ${storageLabel(repoKey).into}.`);
       void qc.invalidateQueries({ queryKey: ["project"] });
       void qc.invalidateQueries({ queryKey: ["history", id] });
     } catch (e) {
@@ -221,7 +228,7 @@ export function ChapterEditor({ id }: { id: string }) {
     } finally {
       savingRef.current = false;
     }
-  }, [loaded, key, conflict, body, meta, persist, id, work, server, toast, isDemo, qc, tabId]);
+  }, [loaded, key, conflict, body, meta, persist, id, work, server, toast, repoKey, qc, tabId]);
 
   // ---------- xử lý xung đột ----------
   const openCompare = async () => {
@@ -279,7 +286,7 @@ export function ChapterEditor({ id }: { id: string }) {
           </div>
           <button className="btn sm" onClick={() => void exportMarkdown(id)}>Xuất .md</button>
           <button className="btn sm" onClick={() => setPanel((p) => (p ? null : "info"))} aria-pressed={!!panel}>{panel ? "Ẩn panel" : "Hiện panel"}</button>
-          <button className="btn primary" disabled={!loaded || !dirty || saveState.kind === "saving"} onClick={() => void save()} data-testid="save-version" title="Tạo một phiên bản trên kho (Ctrl/⌘+S)">
+          <button className="btn primary" disabled={!loaded || !dirty || saveState.kind === "saving" || viewer} onClick={() => void save()} data-testid="save-version" title="Tạo một phiên bản trên kho (Ctrl/⌘+S)">
             {saveState.kind === "saving" ? <><span className="spinner" /> Đang lưu…</> : "Lưu phiên bản"}
           </button>
           <button className="btn icon" disabled={!loaded || !dirty} onClick={() => setNoteOpen(true)} title="Lưu kèm ghi chú phiên bản">✎</button>
@@ -353,7 +360,7 @@ export function ChapterEditor({ id }: { id: string }) {
               <h1 className="title-input" style={{ display: "block" }}>{meta?.title}</h1>
             )}
             <div style={{ display: mode === "write" ? "block" : "none" }}>
-              <MarkdownEditor ref={editor} initial="" onChange={setBody} onSave={() => void save()} readOnly={!loaded} />
+              <MarkdownEditor ref={editor} initial="" onChange={setBody} onSave={() => void save()} readOnly={!loaded || viewer} />
             </div>
             {mode === "read" && <div data-testid="read-view"><Markdown text={body} /></div>}
           </div>
@@ -363,7 +370,7 @@ export function ChapterEditor({ id }: { id: string }) {
           <span className="grow" />
           <span className="save-state" data-testid="save-state" data-state={saveState.kind}>
             <span className={`pip ${saveState.kind}`} />
-            {saveState.kind === "synced" && `Đã lưu ${isDemo ? "trong kho demo" : "lên GitHub"} · phiên bản ${short(work?.commit)}`}
+            {saveState.kind === "synced" && `Đã lưu ${storageLabel(repoKey).at} · phiên bản ${short(work?.commit)}`}
             {saveState.kind === "local" && `Nháp chỉ có trên thiết bị này · tự lưu ${saveState.at ? relTime(saveState.at) : ""} · chưa lưu phiên bản`}
             {saveState.kind === "saving" && "Đang lưu phiên bản…"}
             {saveState.kind === "error" && <span style={{ color: "var(--danger)" }}>{saveState.msg}</span>}
@@ -373,9 +380,9 @@ export function ChapterEditor({ id }: { id: string }) {
       {panel && (
         <aside className="panel" aria-label="Panel phụ">
           <div className="panel-tabs">
-            {(["info", "versions", "canon", "notes", "review"] as const).map((p) => (
+            {(["info", "versions", "canon", "notes", "review", ...(cloudNovel ? (["images"] as const) : [])] as const).map((p) => (
               <button key={p} className={`tab ${panel === p ? "active" : ""}`} onClick={() => setPanel(p)}>
-                {p === "info" ? "Thông tin" : p === "versions" ? "Phiên bản" : p === "canon" ? "Canon" : p === "notes" ? "Ghi chú" : "Review"}
+                {p === "info" ? "Thông tin" : p === "versions" ? "Phiên bản" : p === "canon" ? "Canon" : p === "notes" ? "Ghi chú" : p === "images" ? "Ảnh" : "Review"}
               </button>
             ))}
           </div>
@@ -393,6 +400,7 @@ export function ChapterEditor({ id }: { id: string }) {
             {panel === "canon" && <CanonPanel />}
             {panel === "notes" && <NotesPanel id={id} />}
             {panel === "review" && <ReviewPanel id={id} />}
+            {panel === "images" && cloudNovel && <ChapterImages novelId={cloudNovel} chapterId={id} canEdit={!viewer} onInsert={(md) => { setMode("write"); editor.current?.insertBlock(md); }} />}
           </div>
         </aside>
       )}
@@ -448,7 +456,7 @@ function InfoPanel({ meta, setMeta, id, words }: { meta: Meta; setMeta: (m: Meta
         Đổi tên hoặc chuyển Act không làm đổi ID hay đường dẫn file. Thay đổi metadata được ghi cùng nội dung trong một phiên bản khi bạn bấm “Lưu phiên bản”.
       </div>
       <div className="small muted">
-        <b>Cách đếm chữ:</b> chỉ đếm thân chương (không gồm tiêu đề, metadata, ghi chú HTML), tách theo khoảng trắng; cụm chỉ có ký hiệu như <code>***</code>, <code>—</code> không tính.
+        <b>Cách đếm chữ:</b> chỉ đếm thân chương (không gồm tiêu đề, metadata, ghi chú HTML), tách theo khoảng trắng; cụm chỉ có ký hiệu như <code>***</code>, <code>—</code> và ảnh chèn trong chương không tính.
       </div>
     </>
   );

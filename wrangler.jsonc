@@ -1,0 +1,19 @@
+{
+  // Cloudflare Worker: trang tĩnh (out/) + API /api/* đọc/ghi R2 và D1.
+  // database_id được thay bằng biến CF_D1_DATABASE_ID trong GitHub Actions khi deploy.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "novel-builder",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./out",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
+    "not_found_handling": "404-page"
+  },
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "novel-builder" }],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "novel-builder", "database_id": "REPLACE_WITH_D1_DATABASE_ID", "migrations_dir": "migrations" }
+  ],
+  "observability": { "enabled": true }
+}

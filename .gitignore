@@ -14,3 +14,5 @@ playwright-report/
 coverage/
 
 !.env.example
+.dev.vars
+.wrangler/

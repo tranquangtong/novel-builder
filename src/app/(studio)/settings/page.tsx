@@ -7,7 +7,8 @@ import type { PullSummary } from "@/lib/domain/types";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/client/api";
-import { useProject } from "@/lib/client/hooks";
+import { useCloudMe, useProject } from "@/lib/client/hooks";
+import { CloudNovels } from "@/components/CloudNovels";
 import { clearConnection, DEFAULT_REPO, saveConnection, useConnection } from "@/lib/client/connection";
 import { resetBackend } from "@/lib/client/backend";
 import { useToast } from "@/components/Toast";
@@ -26,7 +27,8 @@ const TOKEN_URL =
 
 export default function ConnectPage() {
   const conn = useConnection();
-  const project = useProject(!!conn);
+  const cloud = useCloudMe();
+  const project = useProject(!!conn && conn.mode !== "cloud");
   const qc = useQueryClient();
   const toast = useToast();
   const router = useRouter();
@@ -82,12 +84,15 @@ export default function ConnectPage() {
       <div className="page-inner">
         <div className="page-head">
           <div>
-            <h1>Kết nối GitHub</h1>
-            <div className="sub">Trang này chạy hoàn toàn trên trình duyệt (GitHub Pages). Bản thảo nằm trong repo private của bạn và chỉ được tải bằng token bạn dán vào đây.</div>
+            <h1>Bộ truyện & kết nối</h1>
+            <div className="sub">{cloud.data ? "Bộ truyện lưu trên Cloudflare (R2 + D1). Bạn đã đăng nhập qua Cloudflare Access — trình duyệt không giữ token nào." : "Trang này chạy hoàn toàn trên trình duyệt (GitHub Pages). Bản thảo nằm trong repo private của bạn và chỉ được tải bằng token bạn dán vào đây."}</div>
           </div>
         </div>
 
-        {conn && (
+        {cloud.data && <CloudNovels me={cloud.data} />}
+        {cloud.data && <h2 style={{ margin: "8px 0 12px", fontSize: 15 }} className="muted">Cách khác: repo GitHub hoặc dữ liệu demo</h2>}
+
+        {conn && conn.mode !== "cloud" && (
           <div className="card card-pad" style={{ marginBottom: 16 }}>
             <h2>Đang kết nối</h2>
             <dl className="kv">

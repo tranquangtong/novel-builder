@@ -14,10 +14,13 @@ function laterThan(prev: string | undefined): string {
 
 export class DemoStore implements RepoStore {
   readonly kind = "demo" as const;
-  readonly repoKey = "demo";
   readonly defaultBranch = "main";
 
-  constructor(public readonly git: MiniGit, private readonly actor = DEMO_OWNER) {}
+  /**
+   * @param repoKey khóa nhận diện kho (dùng làm khóa nháp trên thiết bị). "demo" cho kho
+   *   demo trong trình duyệt; "cloud:<novelId>" cho từng bộ truyện trên Cloudflare.
+   */
+  constructor(public readonly git: MiniGit, private readonly actor = DEMO_OWNER, public readonly repoKey = "demo") {}
 
   async getBranchHead(branch: string) {
     const sha = (await this.git.readState()).refs[branch];

@@ -2,7 +2,7 @@ const ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"; // base32 Crockford, chữ 
 
 function randomBytes(n: number): Uint8Array {
   const b = new Uint8Array(n);
-  globalThis.crypto.getRandomValues(b);
+  crypto.getRandomValues(b);
   return b;
 }
 

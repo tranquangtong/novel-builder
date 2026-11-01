@@ -58,3 +58,34 @@ docs.github.com bị chặn từ môi trường phát triển, nên tôi đọc 
 5. Sửa cùng chương trên github.com rồi lưu từ trang: phải báo xung đột.
 
 Khác biệt có thể gặp với GitHub thật: `mergeable` có thể là `null` vài giây (trang báo "đang kiểm tra"); giới hạn tốc độ khi xuất toàn bộ bản thảo (khoảng 200 lần đọc blob, chạy song song tối đa 8).
+
+---
+
+# Bổ sung: chế độ Cloudflare (R2 + D1 + Access) — 01/11/2026
+
+| Kiểm tra | Kết quả |
+|---|---|
+| `npm run typecheck` (trang + Worker với `@cloudflare/workers-types`) | sạch |
+| `npm test` | **34/34** (thêm 9 test Worker: D1 thật bằng SQLite, R2 giả lập) |
+| `npx playwright test -c playwright.cloud.config.ts` | **4/4** trên **workerd** (`wrangler dev`, R2/D1 local) |
+| `wrangler deploy --dry-run` | đóng gói được, 332 KB (gzip 80 KB) |
+
+Đã kiểm tra:
+- **Access JWT**: không có JWT, sai audience hoặc sai issuer → 401. Thiếu cấu hình → 500 (từ chối luôn, không mở cửa). Chế độ bỏ qua đăng nhập lúc phát triển chỉ hoạt động khi host là localhost.
+- **Vai trò**:
+  - Người chỉ đọc không lưu, không tạo bộ truyện, không tải ảnh lên được (403).
+  - Agent không lưu thẳng bản chính, không nhập đề xuất, không sửa `index.json`, nhưng mở được đề xuất.
+  - Service token lạ bị từ chối hẳn.
+- **Ghi đồng thời**: hai phiên cùng đọc rồi cùng ghi thì phiên sau bị chặn, `withLock` chạy lại trên bản mới. Đã kiểm tra ngược: bỏ điều kiện `version` thì test trượt.
+- **Chuyển bộ truyện**: nội dung khớp từng byte, chỉ mục được sinh lại, đường dẫn lạ hoặc thiếu `project.json` bị từ chối. E2E chuyển 200 chương từ GitHub API giả qua trình duyệt.
+- **Ảnh**:
+  - Tải lên, liệt kê và tải về đều được; trình duyệt giải mã PNG thật trong E2E.
+  - Ảnh chèn vào chương hiển thị ở chế độ đọc.
+  - Chặn SVG, ảnh hơn 15 MB, người chỉ đọc và path traversal. Xóa thì chuyển vào `trash/`.
+- **CSRF**: request ghi có Origin lạ → 403.
+
+Đã xác minh qua mã nguồn tài liệu Cloudflare (`cloudflare/cloudflare-docs`): header `Cf-Access-Jwt-Assertion` và JWKS `/cdn-cgi/access/certs`; claim `common_name` của service token; `ctx.access` **không** có khi Worker có Static Assets (nên Worker tự kiểm tra JWT); `run_worker_first`; R2 `list({include})`; D1 `batch` là transaction; giới hạn gói miễn phí của D1/R2; `keep_vars` và `--var`.
+
+**CHƯA chạy thật**, cần bạn làm theo `docs/CLOUDFLARE_SETUP.md`. Những điểm có thể khác với bản local:
+- Access ở cấp Worker có gửi header `Cf-Access-Jwt-Assertion` tới Worker hay không. Nếu không, API sẽ trả 401 "Chưa đăng nhập qua Cloudflare Access", báo tôi để chuyển sang ứng dụng Access theo hostname.
+- Độ trễ thật giữa R2 và D1.

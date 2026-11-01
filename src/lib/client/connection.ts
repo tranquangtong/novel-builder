@@ -9,6 +9,8 @@ import { useMemo, useSyncExternalStore } from "react";
  */
 export type Connection =
   | { mode: "demo" }
+  /** Bộ truyện trên Cloudflare (R2 + D1). Đăng nhập do Cloudflare Access lo, trình duyệt không giữ token. */
+  | { mode: "cloud"; novelId: string; novelTitle: string }
   | { mode: "github"; owner: string; repo: string; branch: string; token: string; remember: boolean };
 
 const KEY = "nb-connection";
@@ -21,6 +23,7 @@ function read(storage: Storage | undefined): Connection | null {
     if (!raw) return null;
     const c = JSON.parse(raw) as Connection;
     if (c.mode === "demo") return c;
+    if (c.mode === "cloud" && /^nv_[0-9a-z]+$/.test(c.novelId)) return c;
     if (c.mode === "github" && c.token && c.owner && c.repo) return c;
   } catch {
     /* bỏ qua dữ liệu hỏng */
@@ -35,7 +38,7 @@ export function loadConnection(): Connection | null {
 
 export function saveConnection(c: Connection) {
   clearConnection();
-  const remember = c.mode === "demo" || c.remember;
+  const remember = c.mode !== "github" || c.remember;
   (remember ? window.localStorage : window.sessionStorage).setItem(KEY, JSON.stringify(c));
   window.dispatchEvent(new Event("nb:connection-changed"));
 }
@@ -52,7 +55,9 @@ export function clearConnection() {
 
 export function connectionKey(c: Connection | null) {
   if (!c) return "none";
-  return c.mode === "demo" ? "demo" : `github:${c.owner}/${c.repo}@${c.branch}`;
+  if (c.mode === "demo") return "demo";
+  if (c.mode === "cloud") return `cloud:${c.novelId}`;
+  return `github:${c.owner}/${c.repo}@${c.branch}`;
 }
 
 // ---- hook React: đọc kết nối hiện tại, cập nhật khi đổi (kể cả từ tab khác) ----

@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022"
+    ],
+    "types": [
+      "@cloudflare/workers-types",
+      "node"
+    ],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "./**/*.ts",
+    "../src/lib/core/**/*.ts",
+    "../src/lib/domain/**/*.ts",
+    "../src/lib/store/**/*.ts",
+    "../tests/unit/worker.test.ts",
+    "../tests/support/fake-cloudflare.ts"
+  ],
+  "exclude": [
+    "../src/lib/store/demo/idb-storage.ts",
+    "../src/lib/store/github/**"
+  ]
+}

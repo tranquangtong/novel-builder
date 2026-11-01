@@ -1,5 +1,5 @@
 "use client";
-import { chapterHref, proposalHref } from "@/lib/client/links";
+import { storageLabel, chapterHref, proposalHref } from "@/lib/client/links";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -100,7 +100,7 @@ export default function OverviewPage() {
                 );
               })}
             </div>
-            <div className="small muted" style={{ marginTop: 10 }}>Nháp chỉ nằm trong trình duyệt này (IndexedDB). Bấm “Lưu phiên bản” trong chương để lưu lên {snap.repo === "demo" ? "kho demo" : "GitHub"}.</div>
+            <div className="small muted" style={{ marginTop: 10 }}>Nháp chỉ nằm trong trình duyệt này (IndexedDB). Bấm “Lưu phiên bản” trong chương để lưu {storageLabel(snap.repo).into}.</div>
           </div>
 
           <div className="card card-pad">

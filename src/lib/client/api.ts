@@ -1,5 +1,6 @@
 "use client";
 import { localApi, LocalApiError } from "./local-api";
+import { loadConnection } from "./connection";
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number, public readonly code: string | undefined, public readonly data: Record<string, unknown>) {
@@ -10,6 +11,8 @@ export class ApiError extends Error {
 /** Gọi “API” cục bộ chạy trong trình duyệt (xem local-api.ts). Giữ chữ ký cũ để giao diện không đổi. */
 export async function api<T = unknown>(path: string, opts: { method?: string; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
   const method = opts.method ?? (opts.body !== undefined ? "POST" : "GET");
+  const conn = typeof window !== "undefined" ? loadConnection() : null;
+  if (conn?.mode === "cloud") return cloudFetch<T>(`/api/novels/${conn.novelId}${path.replace(/^\/api/, "")}`, method, opts.body);
   try {
     return (await localApi(method, path, opts.body)) as T;
   } catch (e) {
@@ -36,4 +39,26 @@ export function relTime(ts: number) {
   const h = Math.round(m / 60);
   if (h < 24) return `${h} giờ trước`;
   return new Date(ts).toLocaleString("vi-VN");
+}
+
+/** Gọi Cloudflare Worker cùng domain. Cookie của Cloudflare Access tự đi kèm. */
+export async function cloudFetch<T = unknown>(path: string, method = "GET", body?: unknown): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method,
+      headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+  } catch (e) {
+    throw new ApiError(`Không kết nối được máy chủ (${(e as Error).message})`, 0, "network", {});
+  }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("nb:unauthenticated"));
+    throw new ApiError(String(data.error ?? `Lỗi ${res.status}`), res.status, data.code as string | undefined, data);
+  }
+  return data as T;
 }

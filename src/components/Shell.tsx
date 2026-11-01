@@ -19,7 +19,7 @@ const NAV = [
   { href: "/history", label: "Lịch sử & phục hồi", icon: "↺" },
   { href: "/context", label: "Gói tài liệu cho agent", icon: "▣" },
   { href: "/import", label: "Nhập & xuất", icon: "⇅" },
-  { href: "/settings", label: "Kết nối GitHub", icon: "⚙" },
+  { href: "/settings", label: "Bộ truyện & kết nối", icon: "⚙" },
 ];
 
 export function useLocalDraftIds(repoKey: string | undefined) {
@@ -46,7 +46,7 @@ export function useLocalDraftIds(repoKey: string | undefined) {
 
 export function Shell({ children, conn }: { children: React.ReactNode; conn: Connection | null }) {
   const mode = conn?.mode;
-  const repoLabel = !conn ? "chưa kết nối" : conn.mode === "demo" ? "kho demo (trên trình duyệt)" : `${conn.owner}/${conn.repo}`;
+  const repoLabel = !conn ? "chưa kết nối" : conn.mode === "demo" ? "kho demo (trên trình duyệt)" : conn.mode === "cloud" ? `${conn.novelTitle} · Cloudflare` : `${conn.owner}/${conn.repo}`;
   const connected = !!conn;
   const pathname = usePathname();
   const router = useRouter();
@@ -139,7 +139,7 @@ export function Shell({ children, conn }: { children: React.ReactNode; conn: Con
         </div>
         )}
         <div className="sidebar-foot">
-          <span className="who" title={repoLabel}>{conn?.mode === "github" ? conn.owner : conn ? "Demo" : "—"}</span>
+          <span className="who" title={repoLabel}>{conn?.mode === "github" ? conn.owner : conn?.mode === "cloud" ? "Cloudflare" : conn ? "Demo" : "—"}</span>
           <ThemeToggle />
           {connected && (
             <button

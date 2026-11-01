@@ -12,6 +12,7 @@ describe("đếm chữ", () => {
     expect(countWords("tiểu thuyết")).toBe(2);
     expect(countWords("   \n\t ")).toBe(0);
     expect(countWords("anh—em 2026")).toBe(2);
+    expect(countWords("Puna ngồi.\n\n![Phác thảo: lá thư dấu thập đỏ](asset:ch_x/abc-la-thu.png)\n\nRei đứng.")).toBe(4);
   });
 });
 

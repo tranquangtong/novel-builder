@@ -36,6 +36,8 @@ export async function getBackend() {
     // Cửa cho test tự động — CHỈ ở chế độ demo (không có token, không có bản thảo thật).
     const { localApi } = await import("./local-api");
     (window as unknown as { __nbTest?: unknown }).__nbTest = { api: localApi };
+  } else if (conn.mode === "cloud") {
+    throw new NotConnectedError("Chế độ Cloudflare gọi thẳng máy chủ, không dùng kho trong trình duyệt");
   } else {
     cached = { key, svc: new ManuscriptService(new GitHubStore({ token: conn.token, owner: conn.owner, repo: conn.repo, branch: conn.branch })), conn };
   }

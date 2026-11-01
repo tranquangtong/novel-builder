@@ -1,12 +1,21 @@
 # The Last Miracle — Xưởng viết riêng tư
 
-Trang web để viết và quản lý tiểu thuyết dài kỳ, chạy trên **GitHub Pages** (giống gymbro-web). Bản thảo nằm trong một **repo GitHub private riêng**. Claude (Claude Code) làm agent trên repo đó: sửa trên nhánh riêng và mở pull request. Bạn đọc, so sánh và quyết định nhập ngay trên trang.
+Trang web để viết và quản lý **nhiều bộ tiểu thuyết dài kỳ**, mỗi chương có thể kèm ảnh (phác thảo, minh hoạ, tham khảo). Bạn cộng tác với agent qua đề xuất chỉnh sửa và tự quyết định nhập vào bản chính.
 
-- Trang: `https://tranquangtong.github.io/novel-builder/` (sau khi bật Pages, xem bên dưới)
-- Repo này (`novel-builder`, public) chỉ chứa **mã của trang**, không chứa bản thảo.
-- Không có máy chủ: trình duyệt gọi thẳng `api.github.com` bằng token của bạn.
+Hiện có hai cách chạy:
 
-## Bật lần đầu (làm một lần)
+| | **Cloudflare (khuyến nghị)** | GitHub Pages (cách cũ) |
+|---|---|---|
+| Trang | Cloudflare Worker | `tranquangtong.github.io/novel-builder` |
+| Bản thảo | R2 (chương, phiên bản, ảnh) + D1 (trạng thái nhỏ) | Repo GitHub private |
+| Đăng nhập | Cloudflare Access (OTP email/Google) | Dán fine-grained token |
+| Nhiều bộ truyện | Có, tạo ngay trên trang | Mỗi bộ một repo |
+| Ảnh theo chương | Có | Không |
+| Agent | API của Worker + service token | Pull request trên GitHub |
+
+Thiết lập Cloudflare: **[docs/CLOUDFLARE_SETUP.md](docs/CLOUDFLARE_SETUP.md)**. Mã nguồn vẫn ở repo này; GitHub Actions kiểm tra rồi deploy lên cả hai nơi.
+
+## GitHub Pages: bật lần đầu (cách cũ)
 
 1. **Bật GitHub Pages cho repo này:** Settings → Pages → *Build and deployment* → Source: **GitHub Actions**.
 2. **Tạo repo bản thảo private**, ví dụ `the-last-miracle-manuscript`, tick "Add a README".
@@ -41,8 +50,24 @@ Muốn thử trước khi có repo thật: trên trang Kết nối, bấm **Th�
 | `npm start` | Phục vụ `out/` như GitHub Pages (`scripts/serve-static.mjs`) |
 | `npm run lint` / `npm run typecheck` / `npm test` | ESLint / TypeScript / Vitest |
 | `npm run test:e2e` | Playwright trên bản xuất tĩnh: chế độ demo và chế độ GitHub với API giả |
+| `npx playwright test -c playwright.cloud.config.ts` | Playwright trên Worker thật (workerd, `wrangler dev`) với R2/D1 local. Cần build trước với `NEXT_PUBLIC_BASE_PATH=` |
+| `npx wrangler dev` | Chạy Worker local; tạo `.dev.vars` với `DEV_AUTH_EMAIL=...` và `EDITOR_EMAILS=...` (chỉ có hiệu lực với localhost) |
 
-### Kiến trúc
+### Kiến trúc (Cloudflare)
+
+```
+Trình duyệt ──(Cloudflare Access: OTP/Google)──► Worker novel-builder
+                                                   ├─ trang tĩnh (out/)
+                                                   └─ /api/novels/<id>/…  ── cùng mã nghiệp vụ với chế độ demo/GitHub
+                                                        ├─ R2: novels/<id>/objects/…  (nội dung + commit, bất biến theo sha)
+                                                        ├─ R2: novels/<id>/assets/<chương>/…  (ảnh; xoá = chuyển vào trash/)
+                                                        └─ D1: novels, repo_state (nhánh + đề xuất; ghi kiểu compare-and-swap)
+```
+
+- Vai trò: email trong `EDITOR_EMAILS` → **biên tập**; email khác được Access cho vào → **chỉ đọc**; service token trong `AGENT_CLIENT_IDS` → **agent** (chỉ đọc + mở đề xuất + bình luận).
+- Lịch sử, phục hồi, đề xuất, review, gói tài liệu chạy y như trước: Worker dùng lại đúng lõi `ManuscriptService` + mini-git, chỉ đổi chỗ lưu.
+
+### Kiến trúc (GitHub Pages, cách cũ)
 
 ```
 GitHub Pages (tĩnh, public)            Repo bản thảo (private)
@@ -61,7 +86,9 @@ Chi tiết: [docs/SCHEMA_AND_FLOWS.md](docs/SCHEMA_AND_FLOWS.md) · Bảo mật 
 
 ## Hạn chế còn lại
 
-- **Chưa kiểm chứng với GitHub thật.** Đã test với GitHub API giả mô phỏng theo đặc tả chính thức; cần bạn tạo repo và token để chạy thử thật (danh sách ở `docs/VERIFICATION.md`).
+- **Cloudflare chưa được deploy thật.** Môi trường phát triển bị chặn mạng tới Cloudflare. Worker đã chạy E2E trên workerd (`wrangler dev`) với R2/D1 local; phần Access (JWT) đã test bằng khóa sinh trong test. Lần deploy đầu cần bạn làm theo `docs/CLOUDFLARE_SETUP.md`.
+- Chuyển từ GitHub sang Cloudflare chỉ mang theo **bản chính hiện tại**, không mang lịch sử commit cũ (lịch sử vẫn nằm ở repo GitHub).
+- Ảnh chưa có phiên bản: tải ảnh mới là thêm ảnh mới; xóa thì ảnh chuyển vào thùng rác trên R2, lấy lại thủ công.
 - Đăng nhập dùng token dán tay, không có nút "Đăng nhập với GitHub", vì luồng OAuth của GitHub cần máy chủ: bước đổi mã không hỗ trợ CORS. Token hết hạn thì tạo token mới và dán lại.
 - Chỉ chấp nhận được **toàn bộ** đề xuất. Chưa có gộp 3 chiều trong editor: khi xung đột thì so sánh rồi chọn bản giữ lại.
 - Nếu Claude mở PR bằng chính tài khoản của token, nút "approval chính thức trên GitHub" không dùng được (GitHub cấm tự approve). "Chấp nhận" (merge) vẫn hoạt động.

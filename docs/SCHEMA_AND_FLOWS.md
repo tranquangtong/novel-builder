@@ -36,7 +36,7 @@ Mưa không ngừng suốt buổi sáng…
 - **`id` ổn định**: tạo ngẫu nhiên (`ch_` + 10 ký tự base32) một lần duy nhất. Đường dẫn file dựa trên `id`, nên **đổi tên hay chuyển Act không làm đổi ID hay đường dẫn**, và lịch sử của file liền mạch.
 - **`order`** là khóa sắp xếp trên toàn bản thảo (có thể là số thập phân để chèn giữa hai chương). **Số chương hiển thị** (Ch 10) được tính từ thứ tự và không lưu trong file.
 - Thân chương được giữ **nguyên từng ký tự** khi đọc/ghi. Các khóa frontmatter lạ (do agent hay công cụ khác thêm) được giữ nguyên khi lưu.
-- **Đếm chữ**: chỉ đếm thân chương (không gồm frontmatter/tiêu đề), tách theo khoảng trắng Unicode, chỉ tính cụm có ít nhất một chữ cái/chữ số, bỏ comment HTML. Tiếng Việt: mỗi âm tiết là một chữ.
+- **Đếm chữ**: chỉ đếm thân chương (không gồm frontmatter/tiêu đề), tách theo khoảng trắng Unicode, chỉ tính cụm có ít nhất một chữ cái/chữ số, bỏ comment HTML và ảnh chèn `![…](…)`. Tiếng Việt: mỗi âm tiết là một chữ.
 
 ### `content/index.json`
 
