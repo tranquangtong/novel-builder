@@ -190,8 +190,26 @@ export function imageInsertion(doc: Text, head: number, md: string, place: "afte
   return { pos: line.to, insert: `\n\n${md}${after}` };
 }
 
-const IMG_LINE = /!\[([^\]]*)\]\(asset:([^)\s]+)\)/;
+/** Dòng chỉ chứa một ảnh: ![chú thích](asset:khoá) */
+const IMG_ONLY_LINE = /^\s*!\[([^\]]*)\]\(asset:([^)\s]+)\)\s*$/;
+/** Kéo một ảnh ĐÃ nằm trong bài để dời chỗ: mang theo vị trí dòng gốc. */
+const IMAGE_MOVE_TYPE = "application/x-novel-image-move";
 
+/** Khoảng cần xoá khi bỏ dòng ảnh: chính dòng đó và một dòng trống liền sau (tránh dồn dòng trống). */
+function imageLineRange(doc: Text, at: number) {
+  const line = doc.lineAt(at);
+  let to = line.number < doc.lines ? line.to + 1 : line.to;
+  if (line.number + 1 <= doc.lines) {
+    const next = doc.line(line.number + 1);
+    if (!next.text.trim()) to = next.number < doc.lines ? next.to + 1 : next.to;
+  }
+  return { from: line.from, to };
+}
+
+/**
+ * Trong chế độ Viết, dòng ![…](asset:…) được THAY bằng chính bức ảnh (không hiện chữ/URL).
+ * Dòng đó vẫn nằm trong file chương — nó là thứ giữ vị trí ảnh. Kéo ảnh để dời, bấm × để bỏ.
+ */
 class ImageWidget extends WidgetType {
   constructor(readonly key: string, readonly alt: string) {
     super();
@@ -199,18 +217,50 @@ class ImageWidget extends WidgetType {
   eq(o: ImageWidget) {
     return o.key === this.key && o.alt === this.alt;
   }
-  toDOM() {
-    const wrap = document.createElement("div");
+  toDOM(view: EditorView) {
+    const wrap = document.createElement("figure");
     wrap.className = "cm-img-preview";
+    wrap.draggable = !view.state.readOnly;
+    wrap.title = "Kéo để dời ảnh sang chỗ khác";
     const img = document.createElement("img");
     img.src = assetUrl(this.key);
     img.alt = this.alt;
     img.loading = "lazy";
+    img.draggable = false;
     wrap.appendChild(img);
+    if (this.alt) {
+      const cap = document.createElement("figcaption");
+      cap.textContent = this.alt;
+      wrap.appendChild(cap);
+    }
+    if (!view.state.readOnly) {
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "cm-img-remove";
+      del.textContent = "×";
+      del.title = "Bỏ ảnh khỏi chương (ảnh vẫn còn trong thư viện ảnh)";
+      del.setAttribute("aria-label", "Bỏ ảnh khỏi chương");
+      del.addEventListener("mousedown", (e) => e.preventDefault());
+      del.addEventListener("click", (e) => {
+        e.preventDefault();
+        const pos = view.posAtDOM(wrap);
+        view.dispatch({ changes: imageLineRange(view.state.doc, pos), userEvent: "delete" });
+        view.focus();
+      });
+      wrap.appendChild(del);
+    }
+    wrap.addEventListener("dragstart", (e) => {
+      if (!e.dataTransfer) return;
+      const line = view.state.doc.lineAt(view.posAtDOM(wrap));
+      e.dataTransfer.setData(IMAGE_DRAG_TYPE, line.text.trim());
+      e.dataTransfer.setData(IMAGE_MOVE_TYPE, String(line.from));
+      e.dataTransfer.effectAllowed = "move";
+    });
     return wrap;
   }
   ignoreEvent() {
-    return false;
+    // để nút × và kéo-thả của ảnh tự xử lý, editor không can thiệp
+    return true;
   }
 }
 
@@ -218,17 +268,16 @@ function buildPreviews(doc: Text): DecorationSet {
   const b = new RangeSetBuilder<Decoration>();
   for (let i = 1; i <= doc.lines; i++) {
     const line = doc.line(i);
-    const m = IMG_LINE.exec(line.text);
-    if (m) b.add(line.to, line.to, Decoration.widget({ widget: new ImageWidget(m[2], m[1]), side: 1, block: true }));
+    const m = IMG_ONLY_LINE.exec(line.text);
+    if (m) b.add(line.from, line.to, Decoration.replace({ widget: new ImageWidget(m[2], m[1]), block: true }));
   }
   return b.finish();
 }
 
-/** Xem trước ảnh ngay trong chế độ Viết, ngay dưới dòng ![…](asset:…), để thấy ảnh nằm ở đâu. */
 const imagePreviews = StateField.define<DecorationSet>({
   create: (st) => buildPreviews(st.doc),
   update: (deco, tr) => (tr.docChanged ? buildPreviews(tr.state.doc) : deco),
-  provide: (f) => EditorView.decorations.from(f),
+  provide: (f) => [EditorView.decorations.from(f), EditorView.atomicRanges.of((v) => v.state.field(f))],
 });
 
 /** Kiểu dữ liệu kéo-thả riêng cho ảnh từ thư viện ảnh của chương. */
@@ -242,7 +291,8 @@ const dropImages = EditorView.domEventHandlers({
   dragover(e) {
     if (e.dataTransfer?.types.includes(IMAGE_DRAG_TYPE)) {
       e.preventDefault();
-      e.dataTransfer.dropEffect = "copy";
+      // dời ảnh trong bài: "move"; ảnh từ thư viện: "copy" (phải khớp effectAllowed, nếu không trình duyệt chặn thả)
+      e.dataTransfer.dropEffect = e.dataTransfer.types.includes(IMAGE_MOVE_TYPE) ? "move" : "copy";
     }
     return false;
   },
@@ -251,10 +301,17 @@ const dropImages = EditorView.domEventHandlers({
     if (!md) return false;
     e.preventDefault();
     if (view.state.readOnly) return true;
-    const at = view.posAtCoords({ x: e.clientX, y: e.clientY }) ?? view.state.doc.length;
-    const { pos, insert } = imageInsertion(view.state.doc, at, md, "nearest");
-    const start = pos + insert.indexOf(md);
-    view.dispatch({ changes: { from: pos, insert }, selection: { anchor: start, head: start + md.length }, scrollIntoView: true, userEvent: "input.drop" });
+    const doc = view.state.doc;
+    const at = view.posAtCoords({ x: e.clientX, y: e.clientY }) ?? doc.length;
+    const { pos, insert } = imageInsertion(doc, at, md, "nearest");
+    // dời ảnh đã có trong bài: bỏ dòng cũ và chèn chỗ mới trong cùng một thao tác (hoàn tác được)
+    const movedFrom = e.dataTransfer?.getData(IMAGE_MOVE_TYPE);
+    const old = movedFrom ? imageLineRange(doc, Math.min(Number(movedFrom), doc.length)) : null;
+    if (old && pos >= old.from && pos <= old.to) return true; // thả lại đúng chỗ cũ
+    const changes = old ? [{ from: old.from, to: old.to, insert: "" }, { from: pos, insert }] : [{ from: pos, insert }];
+    const tr = view.state.update({ changes, userEvent: old ? "move.drop" : "input.drop" });
+    const start = tr.changes.mapPos(pos, 1) - insert.length + insert.indexOf(md);
+    view.dispatch(tr, { selection: { anchor: start }, scrollIntoView: true });
     view.focus();
     return true;
   },

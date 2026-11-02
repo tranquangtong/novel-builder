@@ -125,3 +125,14 @@ E2E ảnh:
 - Có ảnh xem trước trong chế độ Viết. Tên chương dài xuống dòng, không bị cắt; Enter không tạo dòng mới.
 
 Lỗi gốc của "ảnh luôn ở đầu chương": nút chèn đặt ảnh ở vị trí con trỏ, mà khi chưa bấm vào bài thì con trỏ nằm ở vị trí 0.
+
+## Bổ sung 02/11/2026 (2): ảnh không còn hiện dòng URL, font Be Vietnam Pro cho nội dung chương
+
+- Chế độ Viết: dòng `![…](asset:…)` được thay bằng chính bức ảnh (kèm chú thích). Dòng đó vẫn nằm trong file chương, vì nó giữ vị trí của ảnh.
+  - Kéo ảnh trong bài để dời chỗ.
+  - Nút × (hiện khi rê chuột) bỏ ảnh khỏi chương; ảnh vẫn còn trong thư viện ảnh.
+  - Cả hai thao tác đều hoàn tác được (Ctrl/⌘+Z).
+- Nội dung chương khi viết, đọc và review (diff) dùng **Be Vietnam Pro**, cùng font với giao diện (biến `--font-read`). Tên bộ truyện và tiêu đề trang vẫn dùng Literata.
+- E2E (workerd) kiểm tra thứ tự trong editor: chèn → kéo từ panel → dời ảnh trong bài xuống sau đoạn hai → bỏ một ảnh bằng × → lưu → thứ tự khi đọc khớp. Editor không còn chữ `asset:`.
+- Lỗi tìm ra khi chạy test và đã sửa: dời ảnh trong bài cần `dropEffect = "move"` khớp với `effectAllowed`. Nếu không khớp, trình duyệt chặn thả.
+- Kết quả: unit 45/45, E2E bản tĩnh 26/26, E2E Cloudflare 6/6, lint/typecheck sạch.

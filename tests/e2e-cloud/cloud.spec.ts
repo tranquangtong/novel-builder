@@ -106,23 +106,33 @@ test("ảnh của chương: tải lên R2, chèn vào chương, hiển thị khi
   await expect(page.getByTestId("insert-target")).toContainText("Đoạn một: Zen bước vào.");
   await page.getByRole("dialog").locator("figure", { hasText: "Phác thảo Zen" }).getByRole("button", { name: "Chèn vào chương" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  const text = () => page.getByTestId("editor-content").innerText();
-  await expect.poll(async () => { const t = await text(); return t.indexOf("Đoạn một") < t.indexOf("![") && t.indexOf("![") < t.indexOf("Đoạn hai"); }).toBe(true);
-  // xem trước ảnh ngay trong chế độ Viết
+  // thứ tự trong chế độ Viết: dòng chữ và ảnh (dòng ![…](asset:…) được thay bằng ảnh, không hiện URL)
+  const editorOrder = () => page.getByTestId("editor-content").evaluate((el) => [...el.children].map((n) => { const im = n.querySelector("img"); return im ? `img:${im.alt}` : (n.textContent ?? "").trim().slice(0, 8); }).filter(Boolean));
+  await expect.poll(editorOrder).toEqual(["Đoạn một", "img:Phác thảo Zen", "Đoạn hai"]);
+  await expect(page.getByTestId("editor-content")).not.toContainText("asset:");
   await expect.poll(() => page.locator(".cm-img-preview img").first().evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(2);
   // kéo ảnh thứ hai từ panel "Ảnh" (bên cạnh bài viết) thả vào đầu đoạn hai
   await page.getByRole("button", { name: "Ảnh", exact: true }).click();
   const panelImg = page.locator(".panel-body figure").filter({ hasText: "Đáy Sắt" }).first();
   await panelImg.dragTo(page.getByTestId("editor-content").getByText("Đoạn hai"), { targetPosition: { x: 2, y: 5 } });
-  await expect.poll(async () => { const t = await text(); return t.indexOf("![Đáy Sắt]") > t.indexOf("Đoạn một") && t.includes("![Đáy Sắt](asset:"); }).toBe(true);
+  await expect.poll(editorOrder).toEqual(["Đoạn một", "img:Phác thảo Zen", "img:Đáy Sắt", "Đoạn hai"]);
+  // dời ảnh Zen đã có trong bài xuống sau đoạn hai
+  const line2 = page.getByTestId("editor-content").getByText("Đoạn hai");
+  const box = (await line2.boundingBox())!;
+  await page.locator(".cm-img-preview").filter({ has: page.locator('img[alt="Phác thảo Zen"]') }).dragTo(line2, { targetPosition: { x: box.width - 4, y: box.height / 2 } });
+  await expect.poll(editorOrder).toEqual(["Đoạn một", "img:Đáy Sắt", "Đoạn hai", "img:Phác thảo Zen"]);
+  // bỏ ảnh Đáy Sắt khỏi chương bằng nút ×
+  const day = page.locator(".cm-img-preview").filter({ has: page.locator('img[alt="Đáy Sắt"]') });
+  await day.hover();
+  await day.getByRole("button", { name: "Bỏ ảnh khỏi chương" }).click();
+  await expect.poll(editorOrder).toEqual(["Đoạn một", "Đoạn hai", "img:Phác thảo Zen"]);
   await page.getByTestId("save-version").click();
   await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "synced");
   await page.getByTestId("mode-read").click();
   const img = page.getByTestId("read-view").locator("img").first();
   await expect(img).toHaveAttribute("alt", "Phác thảo Zen");
-  // thứ tự khi đọc: đoạn một → ảnh Zen → ảnh Đáy Sắt (thả vào đầu đoạn hai) → đoạn hai
   const order = await page.getByTestId("read-view").evaluate((el) => [...el.querySelectorAll("p, img")].map((n) => (n instanceof HTMLImageElement ? `img:${n.alt}` : (n.textContent ?? "").trim().slice(0, 8))).filter(Boolean));
-  expect(order).toEqual(["Đoạn một", "img:Phác thảo Zen", "img:Đáy Sắt", "Đoạn hai"]);
+  expect(order).toEqual(["Đoạn một", "Đoạn hai", "img:Phác thảo Zen"]);
   await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(2);
 });
 
