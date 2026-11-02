@@ -27,17 +27,15 @@ const CSP = [
   "form-action 'none'",
 ].join("; ");
 
-// Đặt theme trước khi vẽ để không nháy màu.
-const themeScript = `try{var t=localStorage.getItem("nb-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <html lang="vi">
       <head>
         {/* Chỉ cho phép kết nối tới chính trang và api.github.com — token không thể bị gửi đi nơi khác. */}
         <meta httpEquiv="Content-Security-Policy" content={CSP} />
         <meta name="referrer" content="no-referrer" />
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* Chỉ dùng giao diện sáng (kể cả khi máy đặt chế độ tối). */}
+        <meta name="color-scheme" content="light only" />
       </head>
       <body>
         <Providers>{children}</Providers>

@@ -115,7 +115,10 @@ Thêm email của họ vào policy **Allow** ở bước 6, **không** thêm và
 
 - GitHub Pages giờ chỉ là trang chuyển hướng. Muốn tắt hẳn: Settings → Pages → Source: None (job `deploy-pages` sẽ báo lỗi; báo tôi để gỡ job đó).
 - **Tự lưu**: trong lúc gõ, nháp được lưu vào trình duyệt (ngay) và lên R2 (`novels/<id>/drafts/<chương>.json`, sau ~2,5 giây). Mở chương ở máy khác vẫn thấy nháp. Bấm **Lưu phiên bản** để tạo một phiên bản trong lịch sử; khi đó nháp trên R2 được xoá.
-- **Ảnh theo chương**: mở chương → nút **Hình ảnh** (hoặc cuộn xuống cuối chương) → chọn loại (Nhân vật, Cảnh quan, Cảnh hành động, Phác thảo, Minh hoạ, Tham khảo, Khác), chọn hoặc kéo-thả ảnh. **Chèn vào chương** để ảnh hiện trong nội dung.
+- **Ảnh theo chương**: tải ảnh lên ở tab **Ảnh** của panel bên phải, hoặc ở mục "Hình ảnh của chương" cuối chương. Chọn loại (Nhân vật, Cảnh quan, Cảnh hành động, Phác thảo, Minh hoạ, Tham khảo, Khác). Đặt ảnh vào **bất kỳ chỗ nào** trong chương:
+  - kéo ảnh từ panel thả vào bài: thả gần đầu một đoạn thì ảnh nằm trước đoạn đó, gần cuối thì nằm sau;
+  - hoặc bấm vào một đoạn rồi bấm **🖼 Ảnh** trên thanh công cụ (hoặc "Chèn vào chương"): ảnh nằm ngay sau đoạn đó, hộp chọn ghi rõ là đoạn nào.
+  Ảnh không bao giờ cắt đôi câu văn. Trong chế độ Viết, ảnh hiện ngay dưới dòng `![…](asset:…)`. Muốn dời ảnh thì cắt dòng đó rồi dán sang chỗ khác.
 - Ảnh đã xóa nằm trong R2 ở `novels/<id>/trash/…`, có thể lấy lại thủ công trong dashboard R2.
 
 ## Dung lượng ước tính (gói miễn phí)

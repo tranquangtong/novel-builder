@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, cloudFetch, fmtDate } from "@/lib/client/api";
 import { assetUrl } from "./Markdown";
+import { IMAGE_DRAG_TYPE } from "./MarkdownEditor";
 import { useToast } from "./Toast";
 
 type Asset = { key: string; kind: string; caption: string; fileName: string; size: number; uploadedAt: string; uploadedBy: string };
@@ -20,7 +21,9 @@ const kindLabel = (k: string) => KINDS.find((x) => x.v === k)?.label ?? k;
 const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif";
 
 /** Ảnh đi kèm một chương (chỉ ở chế độ Cloudflare). */
-export function ChapterImages({ novelId, chapterId, canEdit, onInsert }: { novelId: string; chapterId: string; canEdit: boolean; onInsert: (markdown: string) => void }) {
+export const imageMarkdown = (a: { caption: string; fileName: string; key: string }) => `![${(a.caption || a.fileName).replace(/[[\]]/g, "")}](asset:${a.key})`;
+
+export function ChapterImages({ novelId, chapterId, canEdit, onInsert, insertHint }: { novelId: string; chapterId: string; canEdit: boolean; onInsert: (markdown: string) => void; insertHint?: React.ReactNode }) {
   const toast = useToast();
   const input = useRef<HTMLInputElement>(null);
   const [kind, setKind] = useState("character");
@@ -68,6 +71,7 @@ export function ChapterImages({ novelId, chapterId, canEdit, onInsert }: { novel
   return (
     <>
       <div className="small muted">Ảnh nhân vật, cảnh quan, cảnh hành động… cho chương này. Lưu trên Cloudflare R2, chỉ người đăng nhập mới xem được. Tối đa 15 MB/ảnh (JPG, PNG, WebP, GIF, AVIF). Chọn hoặc kéo-thả nhiều ảnh một lúc.</div>
+      {canEdit && (insertHint ?? <div className="small muted">Để đặt ảnh vào giữa chương: <b>kéo ảnh thả vào đúng chỗ</b> trong bài viết, hoặc bấm vào chỗ đó trong bài rồi bấm “Chèn vào chương” (ảnh nằm ngay sau đoạn có con trỏ).</div>)}
       {canEdit && (
         <div className={`grid image-drop${drag ? " over" : ""}`} style={{ gap: 8 }}
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
@@ -94,10 +98,12 @@ export function ChapterImages({ novelId, chapterId, canEdit, onInsert }: { novel
       )}
       <div className="image-grid" data-testid="image-list">
         {q.data?.assets.filter((a) => !filter || a.kind === filter).map((a) => (
-          <figure key={a.key} className="version-item" style={{ flexDirection: "column", margin: 0 }}>
-            <a href={assetUrl(a.key)} target="_blank" rel="noreferrer" style={{ display: "block", width: "100%" }}>
+          <figure key={a.key} className="version-item image-figure" style={{ flexDirection: "column", margin: 0 }} draggable={canEdit}
+            onDragStart={(e) => { e.dataTransfer.setData(IMAGE_DRAG_TYPE, imageMarkdown(a)); e.dataTransfer.setData("text/plain", imageMarkdown(a)); e.dataTransfer.effectAllowed = "copy"; }}
+            title={canEdit ? "Kéo thả vào bài viết để đặt ảnh ở đó" : undefined}>
+            <a href={assetUrl(a.key)} target="_blank" rel="noreferrer" style={{ display: "block", width: "100%" }} draggable={false}>
               {/* eslint-disable-next-line @next/next/no-img-element -- ảnh riêng tư từ R2, không qua tối ưu ảnh của Next */}
-              <img src={assetUrl(a.key)} alt={a.caption || a.fileName} loading="lazy" style={{ width: "100%", maxHeight: 220, objectFit: "contain", borderRadius: 6, background: "var(--bg)" }} />
+              <img src={assetUrl(a.key)} alt={a.caption || a.fileName} loading="lazy" draggable={false} style={{ width: "100%", maxHeight: 220, objectFit: "contain", borderRadius: 6, background: "var(--bg)" }} />
             </a>
             <figcaption style={{ width: "100%" }}>
               <div className="row" style={{ gap: 6 }}>
@@ -107,7 +113,7 @@ export function ChapterImages({ novelId, chapterId, canEdit, onInsert }: { novel
               <div className="small muted">{fmtDate(a.uploadedAt)} · {Math.ceil(a.size / 1024)} KB</div>
               {canEdit && (
                 <div className="row" style={{ gap: 4, marginTop: 6 }}>
-                  <button className="btn sm" onClick={() => onInsert(`![${(a.caption || a.fileName).replace(/[[\]]/g, "")}](asset:${a.key})`)}>Chèn vào chương</button>
+                  <button className="btn sm" onClick={() => onInsert(imageMarkdown(a))}>Chèn vào chương</button>
                   <button className="btn sm ghost" onClick={() => void trash(a)}>Bỏ vào thùng rác</button>
                 </div>
               )}

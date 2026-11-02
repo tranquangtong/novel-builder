@@ -3,7 +3,7 @@ import { storageLabel } from "@/lib/client/links";
 import { proposalHref } from "@/lib/client/links";
 import { exportMarkdown } from "@/lib/client/local-api";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, cloudFetch, fmtDate, relTime, short } from "@/lib/client/api";
 
@@ -48,7 +48,7 @@ export function ChapterEditor({ id }: { id: string }) {
   const [body, setBody] = useState("");
   const [meta, setMeta] = useState<Meta | null>(null);
   const [mode, setMode] = useState<"write" | "read">("write");
-  const [panel, setPanel] = useState<"info" | "versions" | "canon" | "notes" | "review" | null>("info");
+  const [panel, setPanel] = useState<"info" | "images" | "versions" | "canon" | "notes" | "review" | null>("info");
   const [saveState, setSaveState] = useState<SaveState>({ kind: "synced" });
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
   const [conflict, setConflict] = useState<Conflict | null>(null);
@@ -60,6 +60,14 @@ export function ChapterEditor({ id }: { id: string }) {
   const [cloudDraftErr, setCloudDraftErr] = useState<string | null>(null);
   /** Nháp đang chờ đẩy lên R2 — để gửi nốt (keepalive) khi đóng tab. */
   const pendingCloud = useRef<{ url: string; payload: string } | null>(null);
+  /** Hộp chọn ảnh từ thanh công cụ (giữ vị trí con trỏ lúc mở). */
+  const [imagePicker, setImagePicker] = useState<{ atStart: boolean; snippet: string } | null>(null);
+  const insertImage = useCallback((md: string) => {
+    setMode("write");
+    setImagePicker(null);
+    // đợi editor hiện lại (chế độ Đọc ẩn editor) rồi chèn và cuộn tới ảnh
+    requestAnimationFrame(() => editor.current?.insertImage(md));
+  }, []);
   const [note, setNote] = useState("");
   const lastSynced = useRef(0);
   const savingRef = useRef(false);
@@ -362,6 +370,7 @@ export function ChapterEditor({ id }: { id: string }) {
             <button className="tb" onClick={() => editor.current?.linePrefix("> ")} title="Trích dẫn">❝</button>
             <button className="tb" onClick={() => editor.current?.linePrefix("- ")} title="Danh sách">•</button>
             <button className="tb" onClick={() => editor.current?.insertBlock("***")} title="Ngắt cảnh">⁂</button>
+            {cloudNovel && !viewer && <button className="tb" data-testid="tb-image" onClick={() => setImagePicker(editor.current?.insertTarget() ?? { atStart: true, snippet: "" })} title="Chèn ảnh vào chỗ đặt con trỏ">🖼 Ảnh</button>}
             <span className="sep" />
             <button className="tb" onClick={() => editor.current?.undo()} title="Hoàn tác (Ctrl+Z)">↶</button>
             <button className="tb" onClick={() => editor.current?.redo()} title="Làm lại (Ctrl+Shift+Z)">↷</button>
@@ -416,7 +425,7 @@ export function ChapterEditor({ id }: { id: string }) {
           <div className="manuscript">
             <div className="chapter-kicker">{summary?.note ? "Ghi chú" : `Chương ${summary?.number ?? ""}`}{meta?.pov ? ` · POV ${meta.pov}` : ""}</div>
             {mode === "write" ? (
-              <input className="title-input" value={meta?.title ?? ""} placeholder="Tên chương" onChange={(e) => meta && setMeta({ ...meta, title: e.target.value })} aria-label="Tên chương" data-testid="chapter-title" disabled={!loaded} />
+              <TitleInput value={meta?.title ?? ""} onChange={(t) => meta && setMeta({ ...meta, title: t })} disabled={!loaded} />
             ) : (
               <h1 className="title-input" style={{ display: "block" }}>{meta?.title}</h1>
             )}
@@ -427,7 +436,7 @@ export function ChapterEditor({ id }: { id: string }) {
             {cloudNovel && (
               <section className="chapter-gallery" id="chapter-gallery" data-testid="chapter-gallery">
                 <h3>Hình ảnh của chương</h3>
-                <ChapterImages novelId={cloudNovel} chapterId={id} canEdit={!viewer} onInsert={(md) => { setMode("write"); editor.current?.insertBlock(md); }} />
+                <ChapterImages novelId={cloudNovel} chapterId={id} canEdit={!viewer} onInsert={insertImage} />
               </section>
             )}
           </div>
@@ -453,9 +462,9 @@ export function ChapterEditor({ id }: { id: string }) {
       {panel && (
         <aside className="panel" aria-label="Panel phụ">
           <div className="panel-tabs">
-            {(["info", "versions", "canon", "notes", "review"] as const).map((p) => (
+            {(["info", ...(cloudNovel ? (["images"] as const) : []), "versions", "canon", "notes", "review"] as const).map((p) => (
               <button key={p} className={`tab ${panel === p ? "active" : ""}`} onClick={() => setPanel(p)}>
-                {p === "info" ? "Thông tin" : p === "versions" ? "Phiên bản" : p === "canon" ? "Canon" : p === "notes" ? "Ghi chú" : "Review"}
+                {p === "info" ? "Thông tin" : p === "images" ? "Ảnh" : p === "versions" ? "Phiên bản" : p === "canon" ? "Canon" : p === "notes" ? "Ghi chú" : "Review"}
               </button>
             ))}
           </div>
@@ -473,6 +482,10 @@ export function ChapterEditor({ id }: { id: string }) {
             {panel === "canon" && <CanonPanel />}
             {panel === "notes" && <NotesPanel id={id} />}
             {panel === "review" && <ReviewPanel id={id} />}
+            {panel === "images" && cloudNovel && (
+              <ChapterImages novelId={cloudNovel} chapterId={id} canEdit={!viewer} onInsert={insertImage}
+                insertHint={!viewer && <div className="banner info"><div className="small"><b>Kéo ảnh thả vào đúng chỗ</b> trong bài viết bên trái (cuộn bài tới đoạn muốn đặt). Hoặc bấm vào đoạn văn rồi bấm “Chèn vào chương”: ảnh nằm ngay sau đoạn đó.</div></div>} />
+            )}
           </div>
         </aside>
       )}
@@ -485,6 +498,25 @@ export function ChapterEditor({ id }: { id: string }) {
             </details>
           )}
           <DiffView before={compare.before} after={compare.after} beforeLabel={compare.beforeLabel} afterLabel={compare.afterLabel} />
+        </Modal>
+      )}
+      {imagePicker && cloudNovel && (
+        <Modal title="Chèn ảnh vào chương" onClose={() => setImagePicker(null)}>
+          <ChapterImages
+            novelId={cloudNovel}
+            chapterId={id}
+            canEdit={!viewer}
+            onInsert={insertImage}
+            insertHint={
+              <div className="banner info" data-testid="insert-target">
+                <div className="small">
+                  {imagePicker.atStart
+                    ? <>Ảnh sẽ được chèn ở <b>đầu chương</b>. Muốn đặt chỗ khác: đóng hộp này, bấm vào đoạn văn muốn đặt ảnh phía sau, rồi bấm “🖼 Ảnh” lại.</>
+                    : <>Ảnh sẽ được chèn ngay sau đoạn: <i>“{imagePicker.snippet}”</i></>}
+                </div>
+              </div>
+            }
+          />
         </Modal>
       )}
       {noteOpen && (
@@ -608,7 +640,7 @@ function CanonPanel() {
   const content = useQuery({ queryKey: ["file", open], enabled: !!open, queryFn: () => api<{ content: string }>(`/api/file?path=${encodeURIComponent(open!)}`) });
   return (
     <>
-      <div className="small muted">Canon đã chốt, sự kiện đã xảy ra và kiến thức nhân vật. <Link href="/canon">Mở trang Canon →</Link></div>
+      <div className="small muted">Canon đã chốt, sự kiện đã xảy ra và kiến thức nhân vật. Outline và canon nằm trong <Link href="/library">Act 0 · Outline &amp; Trivia →</Link></div>
       {files.data?.files.map((f) => (
         <div key={f.path}>
           <button className="list-item" onClick={() => setOpen(open === f.path ? null : f.path)} style={{ padding: "6px 4px" }}>
@@ -673,5 +705,45 @@ function ReviewPanel({ id }: { id: string }) {
         </Link>
       ))}
     </>
+  );
+}
+
+/** Tên chương: tự xuống dòng và cao theo nội dung (tên dài không bị cắt). Không cho Enter tạo dòng mới. */
+function TitleInput({ value, onChange, disabled }: { value: string; onChange: (t: string) => void; disabled: boolean }) {
+  const el = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const t = el.current;
+    if (!t) return;
+    const fit = () => {
+      t.style.height = "auto";
+      t.style.height = `${t.scrollHeight}px`;
+    };
+    fit();
+    // chỉ đo lại khi bề ngang đổi (đổi chiều cao do fit() không kích hoạt vòng lặp)
+    let w = t.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (t.clientWidth !== w) {
+        w = t.clientWidth;
+        fit();
+      }
+    });
+    ro.observe(t);
+    return () => ro.disconnect();
+  }, [value]);
+  return (
+    <textarea
+      ref={el}
+      rows={1}
+      className="title-input"
+      value={value}
+      placeholder="Tên chương"
+      aria-label="Tên chương"
+      data-testid="chapter-title"
+      disabled={disabled}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.preventDefault();
+      }}
+      onChange={(e) => onChange(e.target.value.replace(/[\r\n]+/g, " "))}
+    />
   );
 }

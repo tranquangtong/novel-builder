@@ -8,7 +8,6 @@ import { useProject } from "@/lib/client/hooks";
 import { api } from "@/lib/client/api";
 import { listDrafts, tabChannel } from "@/lib/client/drafts";
 import type { PullSummary } from "@/lib/domain/types";
-import { ThemeToggle } from "./ThemeToggle";
 import { clearConnection, type Connection } from "@/lib/client/connection";
 
 type NavItem = { href: string; label: string; icon: string; count?: boolean };
@@ -149,7 +148,6 @@ export function Shell({ children, conn, cloud = false }: { children: React.React
         )}
         <div className="sidebar-foot">
           <span className="who" title={repoLabel}>{conn?.mode === "github" ? conn.owner : conn?.mode === "cloud" ? "Cloudflare" : conn ? "Demo" : "—"}</span>
-          <ThemeToggle />
           {connected && !cloud && (
             <button
               className="btn ghost sm"

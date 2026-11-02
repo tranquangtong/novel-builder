@@ -108,3 +108,20 @@ E2E mới trên workerd:
 Lỗi tìm ra khi chạy test và đã sửa: đổi kết nối xoá cache truy vấn, làm trang Kết nối bị tháo ra/gắn lại và mất kết quả kiểm tra. Gate giờ ghi nhớ môi trường (Cloudflare hay trang tĩnh).
 
 Đã kiểm tra trên mạng thật: `https://novel-builder.tongquangtran.workers.dev` trả 302 sang trang đăng nhập Cloudflare Access (`tqtong.cloudflareaccess.com`). Nghĩa là Worker đã deploy và Access đang bảo vệ.
+
+## Bổ sung 02/11/2026: tên chương dài, bỏ giao diện tối, chèn ảnh ở bất kỳ đâu
+
+| Kiểm tra | Kết quả |
+|---|---|
+| lint, typecheck | sạch |
+| `npm test` | **45/45** (thêm 4 test cho quy tắc chèn ảnh; gồm cả test của Act 0) |
+| E2E bản tĩnh | **26/26** (test "chuyển sáng/tối" đổi thành "chỉ có giao diện sáng kể cả khi máy đặt chế độ tối") |
+| E2E Cloudflare (workerd) | **6/6** |
+
+E2E ảnh:
+- Bấm vào đoạn 1 → 🖼 Ảnh → hộp chọn ghi "sau đoạn: Đoạn một…" → ảnh nằm giữa đoạn 1 và đoạn 2.
+- Kéo ảnh từ panel thả vào đầu đoạn 2 → ảnh nằm trước đoạn 2.
+- Thứ tự khi đọc đúng: đoạn một → ảnh → ảnh → đoạn hai.
+- Có ảnh xem trước trong chế độ Viết. Tên chương dài xuống dòng, không bị cắt; Enter không tạo dòng mới.
+
+Lỗi gốc của "ảnh luôn ở đầu chương": nút chèn đặt ảnh ở vị trí con trỏ, mà khi chưa bấm vào bài thì con trỏ nằm ở vị trí 0.

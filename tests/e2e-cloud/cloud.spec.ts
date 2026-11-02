@@ -72,6 +72,14 @@ test("ảnh của chương: tải lên R2, chèn vào chương, hiển thị khi
   await page.getByRole("dialog").getByRole("textbox").fill("Chương có ảnh");
   await page.getByRole("button", { name: "Tạo chương" }).click();
   await expect(page.getByTestId("chapter-title")).toHaveValue("Chương có ảnh");
+  // tên chương dài: xuống dòng, không bị cắt
+  const title = page.getByTestId("chapter-title");
+  const h1 = await title.evaluate((t: HTMLTextAreaElement) => t.clientHeight);
+  await title.fill("SẮC LỆNH HỌC VIỆN VÀ MẢNH GHÉP THỨ TƯ CỦA MỘT KẺ KHÔNG CÓ CHỖ ĐỨNG GIỮA METROPOLIS");
+  await title.press("Enter");
+  await expect(title).toHaveValue("SẮC LỆNH HỌC VIỆN VÀ MẢNH GHÉP THỨ TƯ CỦA MỘT KẺ KHÔNG CÓ CHỖ ĐỨNG GIỮA METROPOLIS");
+  await expect.poll(() => title.evaluate((t: HTMLTextAreaElement) => t.clientHeight)).toBeGreaterThan(h1 * 1.5);
+  expect(await title.evaluate((t: HTMLTextAreaElement) => t.scrollHeight - t.clientHeight)).toBeLessThanOrEqual(1);
   await page.getByTestId("goto-gallery").click();
   await expect(page.getByTestId("chapter-gallery")).toBeInViewport();
   await page.getByLabel("Loại ảnh").selectOption("character");
@@ -87,13 +95,34 @@ test("ảnh của chương: tải lên R2, chèn vào chương, hiển thị khi
   await expect(page.getByTestId("image-list").locator("figure")).toHaveCount(1);
   const thumb = page.getByTestId("image-list").locator("img").first();
   await expect.poll(() => thumb.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(2);
-  await page.getByRole("button", { name: "Chèn vào chương" }).click();
-  await expect(page.getByTestId("editor-content")).toContainText("![Phác thảo Zen](asset:");
+  // chèn vào GIỮA chương: đặt con trỏ ở đoạn 1 rồi dùng nút 🖼 Ảnh trên thanh công cụ
+  await page.getByTestId("editor-content").click();
+  await page.keyboard.insertText("Đoạn một: Zen bước vào.");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.insertText("Đoạn hai: cửa đóng lại.");
+  await page.getByTestId("editor-content").getByText("Đoạn một").click();
+  await page.getByTestId("tb-image").click();
+  await expect(page.getByTestId("insert-target")).toContainText("Đoạn một: Zen bước vào.");
+  await page.getByRole("dialog").locator("figure", { hasText: "Phác thảo Zen" }).getByRole("button", { name: "Chèn vào chương" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const text = () => page.getByTestId("editor-content").innerText();
+  await expect.poll(async () => { const t = await text(); return t.indexOf("Đoạn một") < t.indexOf("![") && t.indexOf("![") < t.indexOf("Đoạn hai"); }).toBe(true);
+  // xem trước ảnh ngay trong chế độ Viết
+  await expect.poll(() => page.locator(".cm-img-preview img").first().evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(2);
+  // kéo ảnh thứ hai từ panel "Ảnh" (bên cạnh bài viết) thả vào đầu đoạn hai
+  await page.getByRole("button", { name: "Ảnh", exact: true }).click();
+  const panelImg = page.locator(".panel-body figure").filter({ hasText: "Đáy Sắt" }).first();
+  await panelImg.dragTo(page.getByTestId("editor-content").getByText("Đoạn hai"), { targetPosition: { x: 2, y: 5 } });
+  await expect.poll(async () => { const t = await text(); return t.indexOf("![Đáy Sắt]") > t.indexOf("Đoạn một") && t.includes("![Đáy Sắt](asset:"); }).toBe(true);
   await page.getByTestId("save-version").click();
   await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "synced");
   await page.getByTestId("mode-read").click();
-  const img = page.getByTestId("read-view").locator("img");
+  const img = page.getByTestId("read-view").locator("img").first();
   await expect(img).toHaveAttribute("alt", "Phác thảo Zen");
+  // thứ tự khi đọc: đoạn một → ảnh Zen → ảnh Đáy Sắt (thả vào đầu đoạn hai) → đoạn hai
+  const order = await page.getByTestId("read-view").evaluate((el) => [...el.querySelectorAll("p, img")].map((n) => (n instanceof HTMLImageElement ? `img:${n.alt}` : (n.textContent ?? "").trim().slice(0, 8))).filter(Boolean));
+  expect(order).toEqual(["Đoạn một", "img:Phác thảo Zen", "img:Đáy Sắt", "Đoạn hai"]);
   await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(2);
 });
 

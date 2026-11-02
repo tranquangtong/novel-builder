@@ -33,47 +33,6 @@
   color-scheme: light;
 }
 
-:root[data-theme="dark"] {
-  --bg: #161513;
-  --bg-elev: #1d1b18;
-  --paper: #1b1a17;
-  --sidebar: #121110;
-  --ink: #ece6da;
-  --ink-2: #c9c1b3;
-  --muted: #8f877a;
-  --line: #2e2b26;
-  --line-strong: #403b33;
-  --accent: #e0835f;
-  --accent-ink: #1a0f0a;
-  --accent-soft: #3a241b;
-  --ok: #7fbf8d;
-  --ok-soft: #1f3324;
-  --warn: #e0b45a;
-  --warn-soft: #3a2f17;
-  --danger: #ef8a80;
-  --danger-soft: #3d1f1c;
-  --info: #8ab4e0;
-  --info-soft: #1c2a3a;
-  --add-bg: #1f3a24;
-  --add-ink: #a8e0b2;
-  --del-bg: #42221d;
-  --del-ink: #f2b0a4;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
-  color-scheme: dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="dark"]) {
-    --bg: #161513; --bg-elev: #1d1b18; --paper: #1b1a17; --sidebar: #121110;
-    --ink: #ece6da; --ink-2: #c9c1b3; --muted: #8f877a; --line: #2e2b26; --line-strong: #403b33;
-    --accent: #e0835f; --accent-ink: #1a0f0a; --accent-soft: #3a241b;
-    --ok: #7fbf8d; --ok-soft: #1f3324; --warn: #e0b45a; --warn-soft: #3a2f17;
-    --danger: #ef8a80; --danger-soft: #3d1f1c; --info: #8ab4e0; --info-soft: #1c2a3a;
-    --add-bg: #1f3a24; --add-ink: #a8e0b2; --del-bg: #42221d; --del-ink: #f2b0a4;
-    color-scheme: dark;
-  }
-}
-
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
@@ -233,6 +192,7 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px
 .title-input {
   width: 100%; border: 0; background: transparent; font-family: var(--font-prose); font-size: 30px; font-weight: 600;
   padding: 0; margin: 0 0 6px; letter-spacing: -0.01em; color: var(--ink);
+  line-height: 1.3; display: block; resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .title-input:focus { outline: none; }
 .chapter-kicker { color: var(--muted); font-size: 12.5px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
@@ -385,3 +345,9 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px
 .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
 .image-drop { padding: 10px; border: 1px dashed var(--line-strong); border-radius: 8px; }
 .image-drop.over { background: var(--accent-soft, rgba(80,120,200,.08)); border-color: var(--accent); }
+.cm-host .cm-img-preview { padding: 6px 0 14px; }
+.cm-host .cm-img-preview img { display: block; max-width: 100%; max-height: 320px; border-radius: 6px; background: var(--bg); }
+.image-figure[draggable="true"] { cursor: grab; }
+.image-drop .row { flex-wrap: wrap; }
+.image-drop .row .input { min-width: 140px; flex: 1 1 140px; }
+.image-drop input[type="file"] { max-width: 100%; }

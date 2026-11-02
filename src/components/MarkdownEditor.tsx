@@ -1,12 +1,13 @@
 "use client";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { EditorState, Compartment } from "@codemirror/state";
-import { EditorView, keymap, placeholder as cmPlaceholder, drawSelection } from "@codemirror/view";
+import { EditorState, Compartment, RangeSetBuilder, StateField, type Text } from "@codemirror/state";
+import { Decoration, type DecorationSet, EditorView, WidgetType, dropCursor, keymap, placeholder as cmPlaceholder, drawSelection } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, redo, undo } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { closeSearchPanel, highlightSelectionMatches, openSearchPanel, search, searchKeymap, searchPanelOpen } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
+import { assetUrl } from "./Markdown";
 
 export interface EditorHandle {
   setValue(text: string): void;
@@ -14,6 +15,10 @@ export interface EditorHandle {
   wrap(prefix: string, suffix?: string): void;
   linePrefix(prefix: string): void;
   insertBlock(text: string): void;
+  /** Chèn ảnh (một khối riêng) ngay sau đoạn đang đặt con trỏ; trả về vị trí đã chèn. */
+  insertImage(markdown: string): void;
+  /** Đoạn mà ảnh sẽ được chèn vào sau (để hiện gợi ý cho người dùng). */
+  insertTarget(): { atStart: boolean; snippet: string };
   toggleSearch(): void;
   undo(): void;
   redo(): void;
@@ -65,6 +70,9 @@ export const MarkdownEditor = forwardRef<EditorHandle, { initial: string; onChan
           history(),
           drawSelection(),
           EditorView.lineWrapping,
+          imagePreviews,
+          dropCursor(),
+          dropImages,
           markdown(),
           syntaxHighlighting(hl),
           search({ top: true }),
@@ -121,6 +129,23 @@ export const MarkdownEditor = forwardRef<EditorHandle, { initial: string; onChan
       v.dispatch({ changes: { from: pos, insert: `\n\n${text}\n\n` }, selection: { anchor: pos + text.length + 4 } });
       v.focus();
     },
+    insertImage(md) {
+      const v = view.current!;
+      const { pos, insert } = imageInsertion(v.state.doc, v.state.selection.main.head, md);
+      const start = pos + insert.indexOf(md);
+      v.dispatch({ changes: { from: pos, insert }, selection: { anchor: start, head: start + md.length }, scrollIntoView: true });
+      v.focus();
+    },
+    insertTarget() {
+      const v = view.current!;
+      const doc = v.state.doc;
+      const head = v.state.selection.main.head;
+      let line = doc.lineAt(head);
+      // dòng trống: lấy đoạn ngay phía trên
+      while (!line.text.trim() && line.number > 1) line = doc.line(line.number - 1);
+      const t = line.text.trim();
+      return { atStart: !t, snippet: t.length > 80 ? `${t.slice(0, 80)}…` : t };
+    },
     toggleSearch() {
       const v = view.current!;
       if (searchPanelOpen(v.state)) closeSearchPanel(v);
@@ -144,3 +169,93 @@ function wrapIn(v: EditorView, p: string, s: string) {
   }
   v.focus();
 }
+
+/**
+ * Vị trí chèn ảnh: con trỏ ở dòng trống → chèn ngay tại đó; con trỏ ở giữa một đoạn →
+ * chèn SAU đoạn đó (không cắt đôi câu văn). Ảnh luôn đứng thành khối riêng, cách dòng trống.
+ */
+export function imageInsertion(doc: Text, head: number, md: string, place: "after" | "nearest" = "after"): { pos: number; insert: string } {
+  const line = doc.lineAt(head);
+  // thả chuột: gần đầu đoạn hơn → đặt TRƯỚC đoạn
+  if (place === "nearest" && line.text.trim() && head - line.from < (line.to - line.from) / 2) {
+    const before = line.number > 1 && doc.line(line.number - 1).text.trim() ? "\n\n" : "";
+    return { pos: line.from, insert: `${before}${md}\n\n` };
+  }
+  if (!line.text.trim()) {
+    const before = line.number > 1 && doc.line(line.number - 1).text.trim() ? "\n" : "";
+    const after = line.number < doc.lines && doc.line(line.number + 1).text.trim() ? "\n" : "";
+    return { pos: line.from, insert: `${before}${md}${after}` };
+  }
+  const after = line.number < doc.lines ? (doc.line(line.number + 1).text.trim() ? "\n\n" : "") : "\n";
+  return { pos: line.to, insert: `\n\n${md}${after}` };
+}
+
+const IMG_LINE = /!\[([^\]]*)\]\(asset:([^)\s]+)\)/;
+
+class ImageWidget extends WidgetType {
+  constructor(readonly key: string, readonly alt: string) {
+    super();
+  }
+  eq(o: ImageWidget) {
+    return o.key === this.key && o.alt === this.alt;
+  }
+  toDOM() {
+    const wrap = document.createElement("div");
+    wrap.className = "cm-img-preview";
+    const img = document.createElement("img");
+    img.src = assetUrl(this.key);
+    img.alt = this.alt;
+    img.loading = "lazy";
+    wrap.appendChild(img);
+    return wrap;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
+
+function buildPreviews(doc: Text): DecorationSet {
+  const b = new RangeSetBuilder<Decoration>();
+  for (let i = 1; i <= doc.lines; i++) {
+    const line = doc.line(i);
+    const m = IMG_LINE.exec(line.text);
+    if (m) b.add(line.to, line.to, Decoration.widget({ widget: new ImageWidget(m[2], m[1]), side: 1, block: true }));
+  }
+  return b.finish();
+}
+
+/** Xem trước ảnh ngay trong chế độ Viết, ngay dưới dòng ![…](asset:…), để thấy ảnh nằm ở đâu. */
+const imagePreviews = StateField.define<DecorationSet>({
+  create: (st) => buildPreviews(st.doc),
+  update: (deco, tr) => (tr.docChanged ? buildPreviews(tr.state.doc) : deco),
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+/** Kiểu dữ liệu kéo-thả riêng cho ảnh từ thư viện ảnh của chương. */
+export const IMAGE_DRAG_TYPE = "application/x-novel-image";
+
+/**
+ * Thả ảnh từ thư viện vào bài: đặt ảnh thành khối riêng tại đúng chỗ thả
+ * (thả giữa một đoạn thì ảnh nằm sau đoạn đó, không cắt đôi câu).
+ */
+const dropImages = EditorView.domEventHandlers({
+  dragover(e) {
+    if (e.dataTransfer?.types.includes(IMAGE_DRAG_TYPE)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    }
+    return false;
+  },
+  drop(e, view) {
+    const md = e.dataTransfer?.getData(IMAGE_DRAG_TYPE);
+    if (!md) return false;
+    e.preventDefault();
+    if (view.state.readOnly) return true;
+    const at = view.posAtCoords({ x: e.clientX, y: e.clientY }) ?? view.state.doc.length;
+    const { pos, insert } = imageInsertion(view.state.doc, at, md, "nearest");
+    const start = pos + insert.indexOf(md);
+    view.dispatch({ changes: { from: pos, insert }, selection: { anchor: start, head: start + md.length }, scrollIntoView: true, userEvent: "input.drop" });
+    view.focus();
+    return true;
+  },
+});

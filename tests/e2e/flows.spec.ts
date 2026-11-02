@@ -363,14 +363,11 @@ test.describe("Gói tài liệu & giao diện", () => {
     expect(m.files.some((f: { role: string; stale?: boolean }) => f.role === "summary" && f.stale === true)).toBeTruthy();
   });
 
-  test("chuyển sáng/tối", async ({ page }) => {
+  test("chỉ có giao diện sáng, kể cả khi máy đặt chế độ tối", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
     await useDemo(page);
-    await go(page, "/");
-    await page.getByTestId("theme-toggle").click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-    await page.getByTestId("theme-toggle").click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await expect(page.getByTestId("demo-ribbon")).toBeVisible();
+    await expect(page.getByTestId("theme-toggle")).toHaveCount(0);
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(246, 242, 234)");
   });
 });
 
