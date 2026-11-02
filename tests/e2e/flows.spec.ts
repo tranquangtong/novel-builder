@@ -130,6 +130,51 @@ test.describe("Xung đột", () => {
     await expect(page.getByTestId("editor-content")).toContainText("Nháp offline.");
   });
 
+  test("chưa sửa gì mà bản chính đổi (vd. nhập đề xuất) → tự tải bản mới, không hiện lỗi đỏ", async ({ page }) => {
+    await useDemo(page);
+    const c = await chapterByNumber(page, 23);
+    await openChapter(page, c.id);
+    await call(page, "POST", "/api/demo/agent", { action: "edit-main", chapterId: c.id });
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(page.getByTestId("auto-updated")).toBeVisible();
+    await expect(page.getByTestId("conflict-banner")).toHaveCount(0);
+    await expect(page.getByTestId("editor-content")).toContainText("agent sửa bản chính");
+    // đã đồng bộ với bản mới: không còn là nháp chưa lưu
+    await expect(page.getByTestId("save-state")).toHaveAttribute("data-state", "synced");
+  });
+
+  test("nháp cũ không có chỉnh sửa thật, sau reload khi bản chính đã đổi → tự dùng bản mới", async ({ page }) => {
+    await useDemo(page);
+    const c = await chapterByNumber(page, 24);
+    await openChapter(page, c.id);
+    const v = await readChapter(page, c.id);
+    const { id: _id, ...meta } = v.doc.meta;
+    void _id;
+    // mô phỏng nháp còn sót lại: y hệt phiên bản nó dựa vào
+    await page.evaluate(
+      async ({ v, meta }) => {
+        const open = indexedDB.open("nb-studio");
+        const db: IDBDatabase = await new Promise((res, rej) => {
+          open.onsuccess = () => res(open.result);
+          open.onerror = () => rej(open.error);
+        });
+        await new Promise<void>((res, rej) => {
+          const tx = db.transaction("drafts", "readwrite");
+          tx.objectStore("drafts").put({ key: `${v.repo}::${v.doc.meta.id}`, repoKey: v.repo, chapterId: v.doc.meta.id, baseBlob: v.blob, baseCommit: v.commitSha, body: v.doc.body, meta, updatedAt: Date.now(), tabId: "tab-cu" });
+          tx.oncomplete = () => res();
+          tx.onerror = () => rej(tx.error);
+        });
+        db.close();
+      },
+      { v, meta },
+    );
+    await call(page, "POST", "/api/demo/agent", { action: "edit-main", chapterId: c.id });
+    await page.reload();
+    await expect(page.getByTestId("editor-content")).toContainText("agent sửa bản chính");
+    await expect(page.getByTestId("conflict-banner")).toHaveCount(0);
+    await expect(page.getByTestId("auto-updated")).toBeVisible();
+  });
+
   test("hai tab cùng sửa một chương: không âm thầm ghi đè", async ({ page, context }) => {
     await useDemo(page);
     const c = await chapterByNumber(page, 22);

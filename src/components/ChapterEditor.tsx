@@ -63,6 +63,12 @@ export function ChapterEditor({ id }: { id: string }) {
   const [note, setNote] = useState("");
   const lastSynced = useRef(0);
   const savingRef = useRef(false);
+  /** Nội dung của phiên bản mà `work` đang dựa vào — để biết người dùng đã thật sự sửa gì chưa. */
+  const baseline = useRef<{ body: string; meta: Meta } | null>(null);
+  const bodyRef = useRef("");
+  const metaRef = useRef<Meta | null>(null);
+  /** Ghi chú nhẹ (không phải lỗi) khi chương tự được cập nhật lên bản mới. */
+  const [notice, setNotice] = useState<string | null>(null);
   const loaded = !!(server && work && meta);
   const repoKey = server?.repo;
   const key = repoKey ? draftKey(repoKey, id) : null;
@@ -100,14 +106,29 @@ export function ChapterEditor({ id }: { id: string }) {
         }
         setServer(v);
         lastSynced.current = Date.now();
+        const serverState = { body: v.doc.body, meta: metaOf(v.doc.meta) };
         if (d && (d.body !== v.doc.body || !metaEq(d.meta, metaOf(v.doc.meta)) || d.baseBlob !== v.blob)) {
-          setWork({ blob: d.baseBlob ?? v.blob, commit: d.baseCommit });
-          apply(d.body, d.meta);
-          setRestoredAt(d.updatedAt);
-          setSaveState({ kind: "local", at: d.updatedAt });
-          if (d.baseBlob !== v.blob) setConflict({ reason: "draft-base", server: v, draftBaseCommit: d.baseCommit });
+          // Nháp dựa trên một phiên bản cũ hơn bản trên kho: xem nháp có thật sự khác phiên bản đó không.
+          const base = d.baseBlob !== v.blob ? await api<ChapterVersion>(`/api/chapters/${id}?commit=${d.baseCommit}`).catch(() => null) : null;
+          if (!alive) return;
+          if (base && d.body === base.doc.body && metaEq(d.meta, metaOf(base.doc.meta))) {
+            // Chưa sửa gì so với phiên bản nó dựa vào (ví dụ chương vừa đổi do nhập đề xuất) → dùng bản mới, không hỏi.
+            setWork({ blob: v.blob, commit: v.commitSha });
+            baseline.current = serverState;
+            apply(v.doc.body, serverState.meta);
+            setNotice("Chương vừa được cập nhật ở nơi khác (ví dụ khi bạn nhập một đề xuất). Bạn chưa sửa gì nên đã tự tải bản mới.");
+            await deleteDraft(k).catch(() => {});
+          } else {
+            setWork({ blob: d.baseBlob ?? v.blob, commit: d.baseCommit });
+            baseline.current = d.baseBlob === v.blob ? serverState : base ? { body: base.doc.body, meta: metaOf(base.doc.meta) } : null;
+            apply(d.body, d.meta);
+            setRestoredAt(d.updatedAt);
+            setSaveState({ kind: "local", at: d.updatedAt });
+            if (d.baseBlob !== v.blob) setConflict({ reason: "draft-base", server: v, draftBaseCommit: d.baseCommit });
+          }
         } else {
           setWork({ blob: v.blob, commit: v.commitSha });
+          baseline.current = serverState;
           apply(v.doc.body, metaOf(v.doc.meta));
           if (d) await deleteDraft(k).catch(() => {});
         }
@@ -122,6 +143,17 @@ export function ChapterEditor({ id }: { id: string }) {
 
   const serverMeta = server ? metaOf(server.doc.meta) : null;
   const dirty = loaded && (work!.blob !== server!.blob || body !== server!.doc.body || !metaEq(meta!, serverMeta!));
+
+  useEffect(() => {
+    bodyRef.current = body;
+    metaRef.current = meta;
+  });
+  /** Người dùng đã thật sự sửa nội dung/thông tin chương so với phiên bản mình dựa vào? (Không rõ → coi là đã sửa, để không mất nháp.) */
+  const hasUserEdits = useCallback(() => {
+    const b = baseline.current;
+    const m = metaRef.current;
+    return !b || !m || bodyRef.current !== b.body || !metaEq(m, b.meta);
+  }, []);
 
   // ---------- tự lưu nháp vào IndexedDB ----------
   const persist = useCallback(async () => {
@@ -209,13 +241,31 @@ export function ChapterEditor({ id }: { id: string }) {
       const h = await api<{ headSha: string; blob: string | null }>(`/api/chapters/${id}/head`);
       if (h.blob && h.blob !== work.blob && h.blob !== serverBlob) {
         const v = await api<ChapterVersion>(`/api/chapters/${id}`);
+        if (!hasUserEdits()) {
+          // Chưa sửa gì → chỉ việc tải bản mới, không cần hỏi.
+          const m = metaOf(v.doc.meta);
+          setServer(v);
+          setWork({ blob: v.blob, commit: v.commitSha });
+          baseline.current = { body: v.doc.body, meta: m };
+          apply(v.doc.body, m);
+          setConflict(null);
+          setRestoredAt(null);
+          setSaveState({ kind: "synced" });
+          lastSynced.current = Date.now();
+          setNotice("Chương vừa được cập nhật ở nơi khác (ví dụ khi bạn nhập một đề xuất). Bạn chưa sửa gì nên đã tự tải bản mới.");
+          if (repoKey) {
+            await deleteDraft(draftKey(repoKey, id)).catch(() => {});
+            window.dispatchEvent(new Event("nb:drafts-changed"));
+          }
+          return;
+        }
         setServer(v);
         setConflict((c) => c ?? { reason: "external", server: v });
       }
     } catch {
       /* mạng chập chờn: thử lại lần sau */
     }
-  }, [id, work, serverBlob]);
+  }, [id, work, serverBlob, hasUserEdits, apply, repoKey]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -258,6 +308,7 @@ export function ChapterEditor({ id }: { id: string }) {
       const v: ChapterVersion = { ...server!, blob: r.blob, commitSha: r.commitSha, doc: { ...server!.doc, body: savedBody, meta: { id, ...savedMeta } }, words: countWords(savedBody) };
       setServer(v);
       setWork({ blob: r.blob, commit: r.commitSha });
+      baseline.current = { body: savedBody, meta: savedMeta };
       setConflict(null);
       setRestoredAt(null);
       await deleteDraftIfMatches(key, savedBody, JSON.stringify(savedMeta)).catch(() => {});
@@ -304,6 +355,7 @@ export function ChapterEditor({ id }: { id: string }) {
     if (!conflict) return;
     if (!window.confirm("Giữ nội dung đang viết và dựa trên bản mới nhất trên kho?\n\nKhi bấm “Lưu phiên bản”, nội dung trên kho sẽ được thay bằng nội dung của bạn. Thay đổi bên ngoài vẫn còn trong lịch sử và có thể phục hồi.")) return;
     setWork({ blob: conflict.server.blob, commit: conflict.server.commitSha });
+    baseline.current = { body: conflict.server.doc.body, meta: metaOf(conflict.server.doc.meta) };
     setConflict(null);
   };
   const takeServer = async () => {
@@ -312,6 +364,7 @@ export function ChapterEditor({ id }: { id: string }) {
     const v = conflict.server;
     setServer(v);
     setWork({ blob: v.blob, commit: v.commitSha });
+    baseline.current = { body: v.doc.body, meta: metaOf(v.doc.meta) };
     apply(v.doc.body, metaOf(v.doc.meta));
     setConflict(null);
     setRestoredAt(null);
@@ -369,7 +422,7 @@ export function ChapterEditor({ id }: { id: string }) {
             <button className="tb" onClick={() => editor.current?.toggleSearch()} title="Tìm trong chương (Ctrl+F)" data-testid="toggle-search">Tìm…</button>
           </div>
         )}
-        {(restoredAt || conflict || otherTab) && (
+        {(restoredAt || conflict || otherTab || notice) && (
           <div className="alerts">
             {otherTab && (
               <div className="banner warn" data-testid="other-tab-banner">
@@ -378,7 +431,7 @@ export function ChapterEditor({ id }: { id: string }) {
                   <div className="small">Tab kia đã ghi nháp lúc {fmtDate(new Date(otherTab.updatedAt).toISOString())}. Tab này tạm dừng tự lưu để không ghi đè.</div>
                   <div className="b-actions">
                     <button className="btn sm" onClick={() => setCompare({ title: "So sánh nháp hai tab", before: otherTab.body, after: body, beforeLabel: "Tab kia", afterLabel: "Tab này" })}>So sánh</button>
-                    <button className="btn sm" onClick={() => { apply(otherTab.body, otherTab.meta); setWork({ blob: otherTab.baseBlob ?? work!.blob, commit: otherTab.baseCommit }); lastSynced.current = Date.now(); setOtherTab(null); }}>Dùng nội dung của tab kia</button>
+                    <button className="btn sm" onClick={() => { apply(otherTab.body, otherTab.meta); setWork({ blob: otherTab.baseBlob ?? work!.blob, commit: otherTab.baseCommit }); baseline.current = null; lastSynced.current = Date.now(); setOtherTab(null); }}>Dùng nội dung của tab kia</button>
                     <button className="btn sm" onClick={() => { lastSynced.current = Date.now(); setOtherTab(null); }}>Tiếp tục với tab này (ghi đè nháp tab kia)</button>
                   </div>
                 </div>
@@ -400,6 +453,14 @@ export function ChapterEditor({ id }: { id: string }) {
                     {dirty && <button className="btn sm ghost" onClick={downloadDraft}>Tải nháp (.md)</button>}
                   </div>
                 </div>
+              </div>
+            )}
+            {notice && !conflict && (
+              <div className="banner info" data-testid="auto-updated">
+                <div className="b-body">
+                  <span className="b-title">Đã tải bản mới</span> <span className="small">{notice}</span>
+                </div>
+                <button className="btn sm ghost" onClick={() => setNotice(null)}>Đã hiểu</button>
               </div>
             )}
             {restoredAt && !conflict && (
@@ -465,6 +526,7 @@ export function ChapterEditor({ id }: { id: string }) {
               const v = await api<ChapterVersion>(`/api/chapters/${id}`);
               setServer(v);
               setWork({ blob: v.blob, commit: v.commitSha });
+              baseline.current = { body: v.doc.body, meta: metaOf(v.doc.meta) };
               apply(v.doc.body, metaOf(v.doc.meta));
               if (key) await deleteDraft(key).catch(() => {});
               setSaveState({ kind: "synced" });
