@@ -29,13 +29,15 @@
   --radius: 10px;
   --font-ui: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-prose: "Literata", "Noto Serif", Georgia, serif;
-  /* Font cho nội dung chương khi viết, đọc và review (cùng font với giao diện) */
-  --font-read: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Font cho nội dung chương khi viết, đọc và review */
+  --font-read: var(--font-prose);
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 
 * { box-sizing: border-box; }
+/* Thanh cuộn thống nhất trên toàn trang (sidebar, panel, cột review…) */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 html, body { height: 100%; }
 body {
   margin: 0;

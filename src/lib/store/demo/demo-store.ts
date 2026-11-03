@@ -126,9 +126,7 @@ export class DemoStore implements RepoStore {
   async listPulls(state: "open" | "closed" | "all") {
     const s = await this.git.readState();
     const list = s.pulls.filter((p) => state === "all" || (state === "open" ? p.state === "open" : p.state !== "open")).sort((a, b) => b.number - a.number);
-    const out: PullSummary[] = [];
-    for (const p of list) out.push(await this.summarize(p, s));
-    return out;
+    return Promise.all(list.map((p) => this.summarize(p, s)));
   }
 
   async getPull(n: number): Promise<PullDetail> {

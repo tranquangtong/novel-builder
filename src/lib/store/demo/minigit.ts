@@ -145,16 +145,43 @@ export class MiniGit {
     return seen;
   }
 
+  /**
+   * Gốc chung gần nhất. Đi ngược từ CẢ HAI phía cùng lúc, mỗi bước một tầng (đọc song song),
+   * dừng ngay khi gặp commit cả hai cùng có. Trước đây duyệt toàn bộ lịch sử của nhánh chính
+   * trước (mỗi commit một lần đọc R2, tuần tự) nên càng lưu nhiều phiên bản càng chậm.
+   */
   async mergeBase(a: string, b: string): Promise<string> {
-    const anc = await this.ancestors(a);
-    const queue = [b];
-    const seen = new Set<string>();
-    while (queue.length) {
-      const s = queue.shift()!;
-      if (anc.has(s)) return s;
-      if (seen.has(s)) continue;
-      seen.add(s);
-      queue.push(...(await this.readCommit(s)).parents);
+    if (a === b) return a;
+    const seenA = new Set([a]);
+    const seenB = new Set([b]);
+    let fa = [a];
+    let fb = [b];
+    const step = async (frontier: string[], mine: Set<string>, other: Set<string>) => {
+      const commits = await Promise.all(frontier.map((s) => this.readCommit(s)));
+      const next: string[] = [];
+      for (const c of commits) {
+        for (const p of c.parents) {
+          if (other.has(p)) return { hit: p, next };
+          if (!mine.has(p)) {
+            mine.add(p);
+            next.push(p);
+          }
+        }
+      }
+      return { hit: null as string | null, next };
+    };
+    if (seenA.has(b)) return b;
+    while (fa.length || fb.length) {
+      if (fb.length) {
+        const r = await step(fb, seenB, seenA);
+        if (r.hit) return r.hit;
+        fb = r.next;
+      }
+      if (fa.length) {
+        const r = await step(fa, seenA, seenB);
+        if (r.hit) return r.hit;
+        fa = r.next;
+      }
     }
     throw new Error("Hai phiên bản không có gốc chung");
   }

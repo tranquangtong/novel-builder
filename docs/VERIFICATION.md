@@ -136,3 +136,18 @@ Lỗi gốc của "ảnh luôn ở đầu chương": nút chèn đặt ảnh ở
 - E2E (workerd) kiểm tra thứ tự trong editor: chèn → kéo từ panel → dời ảnh trong bài xuống sau đoạn hai → bỏ một ảnh bằng × → lưu → thứ tự khi đọc khớp. Editor không còn chữ `asset:`.
 - Lỗi tìm ra khi chạy test và đã sửa: dời ảnh trong bài cần `dropEffect = "move"` khớp với `effectAllowed`. Nếu không khớp, trình duyệt chặn thả.
 - Kết quả: unit 45/45, E2E bản tĩnh 26/26, E2E Cloudflare 6/6, lint/typecheck sạch.
+
+## Bổ sung 03/11/2026: tốc độ trang Đề xuất, nút Làm mới, thanh cuộn, font
+
+- **Nguyên nhân chậm**: để biết đề xuất sửa file nào, ứng dụng tìm gốc chung của `main` và nhánh đề xuất. Thuật toán cũ duyệt **toàn bộ lịch sử `main`** trước, mỗi commit một lần đọc R2, tuần tự. Lịch sử càng dài (mỗi lần "Lưu phiên bản" thêm một commit) thì trang càng chậm.
+- **Sửa**:
+  - Tìm từ cả hai phía cùng lúc, đọc song song theo tầng, dừng khi gặp nhau.
+  - Cache đối tượng bất biến (commit/blob theo sha) trong bộ nhớ Worker giữa các request, giới hạn 24 MB, LRU.
+  - Tóm tắt các đề xuất song song.
+- **Test** `tests/unit/merge-base.test.ts`: lịch sử 300 phiên bản, đề xuất tách từ phiên bản 290.
+  - Thuật toán cũ: **305** lần đọc. Thuật toán mới: dưới 40. Đã kiểm tra ngược: chạy test với mã cũ thì trượt.
+  - Có thêm các trường hợp tổ tiên trực tiếp, trùng nhau, commit merge.
+- **Nút Làm mới**: hiện vòng xoay và chữ "Đang làm mới…" khi đang tải, rồi "cập nhật hh:mm:ss". E2E dùng phản hồi bị làm chậm để thấy được trạng thái này.
+- **Thanh cuộn**: một kiểu mảnh, cùng màu cho toàn trang (`scrollbar-width: thin`).
+- **Font nội dung chương**: trả về Literata.
+- **Kết quả**: unit 47/47, E2E bản tĩnh 28/28, E2E Cloudflare 6/6, lint/typecheck sạch.

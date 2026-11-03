@@ -43,12 +43,20 @@ export class R2D1Storage implements MgStorage {
   }
 
   async getObject(kind: "blob" | "commit", sha: string) {
-    const o = await this.env.BUCKET.get(this.key(kind, sha));
-    return o ? await o.text() : undefined;
+    const k = this.key(kind, sha);
+    const hit = objectCache.get(k);
+    if (hit !== undefined) return hit;
+    const o = await this.env.BUCKET.get(k);
+    if (!o) return undefined;
+    const text = await o.text();
+    objectCache.set(k, text);
+    return text;
   }
 
   async putObject(kind: "blob" | "commit", sha: string, data: string) {
-    await this.env.BUCKET.put(this.key(kind, sha), data, { httpMetadata: { contentType: kind === "blob" ? "text/plain; charset=utf-8" : "application/json" } });
+    const k = this.key(kind, sha);
+    await this.env.BUCKET.put(k, data, { httpMetadata: { contentType: kind === "blob" ? "text/plain; charset=utf-8" : "application/json" } });
+    objectCache.set(k, data);
   }
 
   async withLock<T>(fn: () => Promise<T>): Promise<T> {
@@ -67,3 +75,42 @@ export class R2D1Storage implements MgStorage {
     throw new StoreError("Không hỗ trợ xóa kho trên Cloudflare", 400);
   }
 }
+
+/**
+ * Bộ nhớ đệm cho đối tượng bất biến (blob/commit đặt tên theo sha — nội dung không bao giờ đổi),
+ * dùng chung giữa các request trong cùng một isolate của Worker. Có giới hạn dung lượng (LRU).
+ * Không cache state (D1) vì state thay đổi.
+ */
+class ObjectCache {
+  private map = new Map<string, string>();
+  private bytes = 0;
+  constructor(private readonly maxBytes: number) {}
+  get(k: string) {
+    const v = this.map.get(k);
+    if (v !== undefined) {
+      this.map.delete(k);
+      this.map.set(k, v);
+    }
+    return v;
+  }
+  set(k: string, v: string) {
+    if (v.length * 2 > this.maxBytes / 4) return; // bỏ qua đối tượng quá lớn
+    const old = this.map.get(k);
+    if (old !== undefined) {
+      this.bytes -= old.length * 2;
+      this.map.delete(k);
+    }
+    this.map.set(k, v);
+    this.bytes += v.length * 2;
+    for (const [key, val] of this.map) {
+      if (this.bytes <= this.maxBytes) break;
+      this.map.delete(key);
+      this.bytes -= val.length * 2;
+    }
+  }
+  clear() {
+    this.map.clear();
+    this.bytes = 0;
+  }
+}
+export const objectCache = new ObjectCache(24 * 1024 * 1024);

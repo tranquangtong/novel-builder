@@ -154,6 +154,18 @@ test("agent mở đề xuất qua API, tác giả xem diff và nhập trên tran
     return { status: res.status, body: await res.json() };
   }, novelId);
   expect(r.status).toBe(200);
+  // trang danh sách: nút Làm mới hiện trạng thái đang tải
+  await page.goto("/proposals/");
+  await expect(page.getByText("Agent: viết nháp Ch 1")).toBeVisible();
+  await page.route("**/api/novels/*/proposals?*", async (route) => {
+    await new Promise((res) => setTimeout(res, 800));
+    await route.continue();
+  });
+  await page.getByTestId("refresh-proposals").click();
+  await expect(page.getByTestId("refresh-proposals")).toContainText("Đang làm mới");
+  await expect(page.getByTestId("refresh-proposals")).toHaveText("Làm mới");
+  await expect(page.getByTestId("proposals-updated")).toBeVisible();
+  await page.unroute("**/api/novels/*/proposals?*");
   await page.goto(`/proposal/?n=${r.body.number}`);
   await expect(page.getByTestId("proposal-file").first()).toContainText("Chương của agent");
   await expect(page.getByTestId("diff-inline")).toContainText("Agent viết câu này.");

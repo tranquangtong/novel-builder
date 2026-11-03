@@ -38,7 +38,10 @@ export default function ProposalsPage() {
           </div>
           <label className="small row" style={{ gap: 4 }}><input type="checkbox" checked={onlyContent} onChange={(e) => setOnlyContent(e.target.checked)} /> Chỉ đề xuất liên quan nội dung</label>
           <span className="grow" />
-          <button className="btn sm" onClick={() => q.refetch()}>Làm mới</button>
+          <button className="btn sm" onClick={() => void q.refetch()} disabled={q.isFetching} data-testid="refresh-proposals" aria-busy={q.isFetching}>
+            {q.isFetching ? <><span className="spinner" aria-hidden /> Đang làm mới…</> : "Làm mới"}
+          </button>
+          {!q.isFetching && q.dataUpdatedAt > 0 && <span className="small muted" data-testid="proposals-updated">cập nhật {new Date(q.dataUpdatedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>}
         </div>
         <div className="card">
           {q.isLoading && <div className="empty"><span className="spinner" /></div>}
