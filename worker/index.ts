@@ -1,14 +1,16 @@
 import { ApiRouteError, dispatch, toRouteError, type Backend } from "../src/lib/core/api-routes";
 import { ManuscriptService } from "../src/lib/core/service";
 import { listAssets, serveAsset, trashAsset, uploadAsset } from "./assets";
-import { authenticate, AuthError, type Identity } from "./auth";
+import { authenticate, AuthError, SESSION_COOKIE, verifyFirebase, type Identity } from "./auth";
+import { readerChapter, readerToc } from "./reader";
 import type { Env } from "./env";
 import { createNovel, getNovel, listNovels, novelStats, renameNovel, storeFor } from "./novels";
 import { deleteDraft, getDraft, listDrafts, putDraft } from "./drafts";
 
 /**
  * Cloudflare Worker: phục vụ trang tĩnh (out/) và API /api/*.
- *  - Cloudflare Access đứng trước toàn bộ domain; Worker kiểm tra lại JWT cho mọi API.
+ *  - Đăng nhập: Google qua Firebase (cookie phiên) — hoặc Cloudflare Access (cách cũ); Worker kiểm tra mọi API.
+ *  - Người đọc (không nằm trong EDITOR_EMAILS) chỉ dùng được API chế độ đọc.
  *  - Bản thảo: R2 (nội dung, phiên bản, ảnh) + D1 (trạng thái nhỏ của từng bộ truyện).
  */
 const worker = {
@@ -26,6 +28,12 @@ const worker = {
   },
 };
 export default worker;
+
+function withCookie(res: Response, value: string, maxAge: number) {
+  const h = new Headers(res.headers);
+  h.append("set-cookie", `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`);
+  return new Response(res.body, { status: res.status, headers: h });
+}
 
 export function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -60,19 +68,42 @@ const needEditor = (who: Identity) => {
 };
 
 async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
-  const who = await authenticate(req, env);
   const method = req.method.toUpperCase();
   if (method !== "GET" && method !== "HEAD" && !sameOrigin(req, url)) throw new ApiRouteError("Origin không hợp lệ", 403, "forbidden");
   const parts = url.pathname.split("/").filter(Boolean); // ["api", ...]
+
+  // /api/session — đổi ID token của Firebase thành cookie phiên (để cả <img> cũng được xác thực)
+  if (parts.length === 2 && parts[1] === "session") {
+    if (method === "DELETE") return withCookie(json({ ok: true }), "", 0);
+    if (method !== "POST") throw new ApiRouteError("Phương thức không hỗ trợ", 405, "invalid");
+    if (!env.FIREBASE_PROJECT_ID) throw new ApiRouteError("Máy chủ chưa bật đăng nhập Google (FIREBASE_PROJECT_ID)", 500, "invalid");
+    const b = await readJson(req);
+    const token = String(b.idToken ?? "");
+    const who = await verifyFirebase(env, token);
+    const exp = (() => {
+      try {
+        return JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).exp as number;
+      } catch {
+        return 0;
+      }
+    })();
+    const maxAge = Math.max(0, Math.min(3600, exp - Math.floor(Date.now() / 1000)));
+    return withCookie(json({ name: who.name, role: who.role, kind: "cloud" }), token, maxAge);
+  }
+
+  const who = await authenticate(req, env);
 
   // /api/me
   if (parts.length === 2 && parts[1] === "me" && method === "GET") return json({ name: who.name, role: who.role, kind: "cloud" });
 
   // /api/novels
   if (parts[1] !== "novels") throw new ApiRouteError("Không tìm thấy", 404, "not_found");
+  const reader = who.role === "viewer";
   if (parts.length === 2) {
     if (method === "GET") {
       const novels = await listNovels(env);
+      // người đọc chỉ thấy tên bộ truyện (không thấy email người tạo, thống kê nội bộ)
+      if (reader) return json({ novels: novels.map((n) => ({ id: n.id, title: n.title })) });
       if (url.searchParams.get("stats") !== "1") return json({ novels });
       return json({ novels: await Promise.all(novels.map(async (n) => ({ ...n, stats: await novelStats(env, n.id) }))) });
     }
@@ -85,6 +116,16 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
 
   const novel = await getNovel(env, parts[2]);
   if (!novel) throw new ApiRouteError("Không có bộ truyện này", 404, "not_found");
+
+  // /api/novels/:id/read[/:chapterId] — chế độ đọc (mọi người đã đăng nhập)
+  if (parts[3] === "read" && method === "GET") {
+    if (parts.length === 4) return json(await readerToc(env, novel.id));
+    if (parts.length === 5) return json(await readerChapter(env, novel.id, parts[4]));
+  }
+  // Người đọc: ngoài chế độ đọc chỉ được tải ảnh (ảnh chèn trong chương)
+  if (reader && !(parts[3] === "assets" && parts[4] === "file" && (method === "GET" || method === "HEAD"))) {
+    throw new ApiRouteError("Tài khoản người đọc chỉ xem được truyện ở chế độ đọc", 403, "forbidden");
+  }
 
   // /api/novels/:id  (đổi tên)
   if (parts.length === 3 && method === "PATCH") {

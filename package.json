@@ -30,6 +30,7 @@
     "@octokit/rest": "22.0.1",
     "@tanstack/react-query": "5.105.0",
     "diff": "9.0.0",
+    "firebase": "13.1.0",
     "idb": "8.0.4",
     "jose": "6.2.12",
     "next": "16.4.2",

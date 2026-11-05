@@ -260,8 +260,70 @@ test("bản Cloudflare không bao giờ rơi về chế độ GitHub: bỏ qua k
   await page.goto("/");
   await expect(page).toHaveURL(/\/novels\/$/);
   await expect(page.locator("nav.nav")).not.toContainText("kết nối");
-  await page.route("**/api/me", (r) => r.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Phiên Access không hợp lệ: AUD …" }) }));
+  // 403 (đăng nhập được nhưng bị từ chối): báo rõ lý do. (401 thì hiện màn hình đăng nhập Google khi đã cấu hình Firebase.)
+  await page.route("**/api/me", (r) => r.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: "Tài khoản Google chưa xác minh email" }) }));
   await page.goto("/library/");
-  await expect(page.getByTestId("cloud-login-error")).toContainText("Phiên Access không hợp lệ: AUD");
+  await expect(page.getByTestId("cloud-login-error")).toContainText("Tài khoản Google chưa xác minh email");
   await expect(page.getByTestId("conn-token")).toHaveCount(0);
+});
+
+test("chế độ đọc: tác giả chuyển qua đọc; người đọc chỉ xem, không copy/in, có watermark, không vào được trang biên tập", async ({ page, browser }) => {
+  await createNovel(page, "Bộ để đọc");
+  const novelId = await page.evaluate(() => JSON.parse(localStorage.getItem("nb-connection")!).novelId as string);
+  // dựng nhanh nội dung: Act 0 (ghi chú bí mật) + 2 chương truyện, qua API như tác giả
+  await page.evaluate(async (nid) => {
+    const p = await (await fetch(`/api/novels/${nid}/project`)).json();
+    const act = p.acts.find((a: { kind?: string }) => a.kind !== "notes").id;
+    for (const t of ["Tàn tro", "Dấu thập đỏ"]) {
+      const c = await (await fetch(`/api/novels/${nid}/chapters`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ title: t, act_id: act }) })).json();
+      const v = await (await fetch(`/api/novels/${nid}/chapters/${c.id}`)).json();
+      const meta = { ...v.doc.meta };
+      delete meta.id;
+      await fetch(`/api/novels/${nid}/chapters/${c.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ meta, body: `Nội dung của ${t}.\n`, baseBlob: v.blob }) });
+    }
+  }, novelId);
+
+  // tác giả: menu "Chế độ đọc" → mục lục → đọc → chương sau → về chế độ viết
+  await page.goto("/library/");
+  await page.getByTestId("goto-reader").click();
+  await expect(page.getByTestId("reader-toc")).toContainText("Tàn tro");
+  await page.getByRole("link", { name: "Bắt đầu đọc" }).click();
+  await expect(page.getByTestId("reader-chapter")).toContainText("Nội dung của Tàn tro.");
+  await page.getByTestId("reader-next").click();
+  await expect(page.getByTestId("reader-chapter")).toContainText("Nội dung của Dấu thập đỏ.");
+  await expect(page.getByTestId("reader-prev")).toBeVisible();
+  await expect(page.getByTestId("back-to-studio")).toBeVisible();
+
+  // người đọc (tài khoản Google bất kỳ, không nằm trong EDITOR_EMAILS)
+  const ctx = await browser.newContext({ extraHTTPHeaders: { "x-dev-auth-email": "ban-doc@gmail.com" } });
+  const r = await ctx.newPage();
+  await r.goto("/library/");
+  await expect(r).toHaveURL(/\/read\/$/); // trang biên tập chuyển thẳng sang chế độ đọc
+  await r.getByRole("link", { name: "Bộ để đọc" }).click();
+  await expect(r.getByTestId("reader-toc")).toContainText("Dấu thập đỏ");
+  await expect(r.getByTestId("back-to-studio")).toHaveCount(0);
+  await r.getByRole("link", { name: /Tàn tro/ }).click();
+  await expect(r.getByTestId("reader-chapter")).toContainText("Nội dung của Tàn tro.");
+  // watermark ghi email người đọc
+  await expect(r.getByTestId("watermark")).toHaveAttribute("data-viewer", "ban-doc@gmail.com");
+  // không bôi đen / copy / chuột phải / Ctrl+A
+  expect(await r.getByTestId("protected").evaluate((el) => getComputedStyle(el).userSelect)).toBe("none");
+  const blocked = await r.evaluate(() => ["copy", "contextmenu", "selectstart"].map((t) => !document.querySelector("[data-testid=protected] p")!.dispatchEvent(new Event(t, { bubbles: true, cancelable: true }))));
+  expect(blocked).toEqual([true, true, true]);
+  await r.getByTestId("reader-chapter").click();
+  await r.keyboard.press("Control+a");
+  expect(await r.evaluate(() => String(window.getSelection()))).toBe("");
+  // rời cửa sổ → nội dung bị mờ
+  await r.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await expect(r.getByTestId("veil")).toBeVisible();
+  await r.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(r.getByTestId("veil")).toHaveCount(0);
+  // in ra trang trống
+  await r.emulateMedia({ media: "print" });
+  expect(await r.getByTestId("reader-chapter").evaluate((el) => getComputedStyle(el).visibility)).toBe("hidden");
+  await r.emulateMedia({ media: "screen" });
+  // API biên tập bị chặn ở máy chủ, kể cả gọi thẳng
+  const statuses = await r.evaluate(async (nid) => Promise.all([`/api/novels/${nid}/project`, `/api/novels/${nid}/proposals`, `/api/novels/${nid}/export`].map(async (u) => (await fetch(u)).status)), novelId);
+  expect(statuses).toEqual([403, 403, 403]);
+  await ctx.close();
 });

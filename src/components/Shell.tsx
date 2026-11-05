@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useProject } from "@/lib/client/hooks";
+import { useCloudMe, useProject } from "@/lib/client/hooks";
+import { FIREBASE_ENABLED, signOutEverywhere } from "@/lib/client/firebase";
 import { api } from "@/lib/client/api";
 import { listDrafts, tabChannel } from "@/lib/client/drafts";
 import type { PullSummary } from "@/lib/domain/types";
@@ -18,6 +19,7 @@ const CLOUD_NAV: NavItem[] = [
   { href: "/library", label: "Thư viện Act & chương", icon: "▤" },
   { href: "/proposals", label: "Đề xuất chỉnh sửa", icon: "⇄", count: true },
   { href: "/history", label: "Lịch sử & phục hồi", icon: "↺" },
+  { href: "/read", label: "Chế độ đọc", icon: "❏" },
 ];
 const NAV: NavItem[] = [
   { href: "/", label: "Tổng quan", icon: "◎" },
@@ -64,6 +66,7 @@ export function Shell({ children, conn, cloud = false }: { children: React.React
   const [collapsedActs, setCollapsedActs] = useState<Set<string>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const drafts = useLocalDraftIds(project.data?.repo);
+  const cloudMe = useCloudMe();
 
   useEffect(() => {
     const onUnauth = () => router.replace(cloud ? "/novels" : "/settings");
@@ -101,7 +104,7 @@ export function Shell({ children, conn, cloud = false }: { children: React.React
           {(cloud ? CLOUD_NAV : NAV).filter((n) => connected || n.href === "/settings" || n.href === "/novels").map((n) => {
             const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
             return (
-              <Link key={n.href} href={n.href} className={active ? "active" : ""} onClick={() => setSidebarOpen(false)}>
+              <Link key={n.href} href={n.href === "/read" && conn?.mode === "cloud" ? `/read/?n=${conn.novelId}` : n.href} className={active ? "active" : ""} onClick={() => setSidebarOpen(false)} data-testid={n.href === "/read" ? "goto-reader" : undefined}>
                 <span className="nav-icon" aria-hidden>{n.icon}</span>
                 {n.label}
                 {n.count && openCount > 0 && <span className="count">{openCount}</span>}
@@ -147,7 +150,8 @@ export function Shell({ children, conn, cloud = false }: { children: React.React
         </div>
         )}
         <div className="sidebar-foot">
-          <span className="who" title={repoLabel}>{conn?.mode === "github" ? conn.owner : conn?.mode === "cloud" ? "Cloudflare" : conn ? "Demo" : "—"}</span>
+          <span className="who" title={repoLabel}>{conn?.mode === "github" ? conn.owner : cloud ? (cloudMe.data?.name ?? "Cloudflare") : conn ? "Demo" : "—"}</span>
+          {cloud && FIREBASE_ENABLED && <button className="btn ghost sm" onClick={() => void signOutEverywhere()} data-testid="sign-out">Đăng xuất</button>}
           {connected && !cloud && (
             <button
               className="btn ghost sm"

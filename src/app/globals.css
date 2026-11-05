@@ -360,3 +360,30 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px
 .cm-host .cm-img-preview figcaption { font-family: var(--font-ui); font-size: 12.5px; color: var(--muted); margin-top: 4px; }
 .cm-host .cm-img-remove { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(20, 16, 10, 0.6); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .15s; }
 .cm-host .cm-img-preview:hover .cm-img-remove, .cm-host .cm-img-remove:focus { opacity: 1; }
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg); }
+.login-card p { margin: 8px 0 20px; }
+.login-google { width: 100%; justify-content: center; padding: 10px 16px; font-size: 15px; }
+
+/* ---------- chế độ đọc ---------- */
+.reader { min-height: 100vh; background: var(--paper); }
+.reader-top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 10px 20px; background: var(--bg-elev); border-bottom: 1px solid var(--line); font-family: var(--font-ui); }
+.reader-top .brand-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reader-main { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
+.reader-main h1 { font-family: var(--font-prose); font-size: 32px; line-height: 1.3; margin: 4px 0 24px; }
+.reader-kicker { color: var(--muted); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; }
+.reader-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); font-family: var(--font-ui); }
+.reader-nav a { max-width: 48%; }
+.toc-act { margin: 28px 0 8px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.toc-ch { display: flex; gap: 12px; padding: 10px 8px; border-radius: 8px; text-decoration: none; }
+.toc-ch:hover { background: var(--bg); }
+.toc-ch .n { color: var(--muted); min-width: 28px; font-variant-numeric: tabular-nums; }
+.protected { position: relative; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.protected img { pointer-events: none; -webkit-user-drag: none; }
+.protected .protected-body { transition: filter .12s; }
+.protected.veiled .protected-body { filter: blur(14px); }
+.watermark { position: absolute; inset: 0; pointer-events: none; background-repeat: repeat; z-index: 2; }
+.veil { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; color: var(--muted); font-family: var(--font-ui); pointer-events: none; }
+@media print {
+  body:has(.protected) * { visibility: hidden !important; }
+  body:has(.protected)::before { content: "Không hỗ trợ in nội dung truyện."; visibility: visible; display: block; padding: 40px; font-family: sans-serif; }
+}

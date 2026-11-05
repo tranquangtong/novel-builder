@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import worker from "../../worker/index";
-import { registerJwksForTests } from "../../worker/auth";
+import { FIREBASE_JWKS_URL, registerJwksForTests } from "../../worker/auth";
 import { fakeEnv } from "../support/fake-cloudflare";
 
 const TEAM = "https://team.cloudflareaccess.com";
@@ -12,15 +12,18 @@ beforeAll(async () => {
   priv = kp.privateKey as CryptoKey;
   const jwk = { ...(await exportJWK(kp.publicKey)), kid: "k1", alg: "RS256" };
   registerJwksForTests(TEAM, createLocalJWKSet({ keys: [jwk] }));
+  registerJwksForTests(FIREBASE_JWKS_URL, createLocalJWKSet({ keys: [jwk] }));
 });
 
 async function token(claims: Record<string, unknown>, opts: { aud?: string; iss?: string } = {}) {
   return new SignJWT(claims).setProtectedHeader({ alg: "RS256", kid: "k1" }).setIssuer(opts.iss ?? TEAM).setAudience(opts.aud ?? "aud-test").setIssuedAt().setExpirationTime("5m").sign(priv);
 }
 
-function call(env: ReturnType<typeof fakeEnv>, method: string, path: string, opts: { jwt?: string; body?: unknown; raw?: BodyInit; type?: string; origin?: string } = {}) {
+function call(env: ReturnType<typeof fakeEnv>, method: string, path: string, opts: { jwt?: string; bearer?: string; cookie?: string; body?: unknown; raw?: BodyInit; type?: string; origin?: string } = {}) {
   const headers = new Headers();
   if (opts.jwt) headers.set("cf-access-jwt-assertion", opts.jwt);
+  if (opts.bearer) headers.set("authorization", `Bearer ${opts.bearer}`);
+  if (opts.cookie) headers.set("cookie", opts.cookie);
   if (opts.body !== undefined) headers.set("content-type", "application/json");
   if (opts.type) headers.set("content-type", opts.type);
   if (method !== "GET") headers.set("origin", opts.origin ?? "https://novel.example.com");
@@ -75,11 +78,13 @@ describe("Worker: bộ truyện, phân quyền, ghi đồng thời", () => {
     expect(created.status).toBe(201);
     const { id } = (await created.json()) as { id: string };
     expect((await call(env, "POST", "/api/novels", { jwt: reader, body: { title: "x" } })).status).toBe(403);
+    // người đọc không vào được API biên tập (kể cả chỉ đọc)
+    expect((await call(env, "GET", `/api/novels/${id}/project`, { jwt: reader })).status).toBe(403);
 
-    const snap = (await (await call(env, "GET", `/api/novels/${id}/project`, { jwt: reader })).json()) as { acts: { id: string }[]; repo: string };
+    const snap = (await (await call(env, "GET", `/api/novels/${id}/project`, { jwt: editor })).json()) as { acts: { id: string }[]; repo: string };
     expect(snap.repo).toBe(`cloud:${id}`);
     const ch = (await (await call(env, "POST", `/api/novels/${id}/chapters`, { jwt: editor, body: { title: "Chương 1", act_id: snap.acts[0].id } })).json()) as { id: string };
-    const v = (await (await call(env, "GET", `/api/novels/${id}/chapters/${ch.id}`, { jwt: reader })).json()) as { blob: string; doc: { meta: Record<string, unknown> } };
+    const v = (await (await call(env, "GET", `/api/novels/${id}/chapters/${ch.id}`, { jwt: editor })).json()) as { blob: string; doc: { meta: Record<string, unknown> } };
     const meta = { ...v.doc.meta };
     delete meta.id;
 
@@ -102,7 +107,7 @@ describe("Worker: bộ truyện, phân quyền, ghi đồng thời", () => {
     expect((await call(env, "POST", `/api/novels/${id}/agent/proposals`, { jwt: agent, body: { title: "x", changes: { "content/index.json": "{}" } } })).status).toBe(400);
     // biên tập nhập đề xuất
     expect((await call(env, "POST", `/api/novels/${id}/proposals/${number}/merge`, { jwt: editor, body: { expectedHeadSha: pr.pr.headSha } })).status).toBe(200);
-    const after = (await (await call(env, "GET", `/api/novels/${id}/chapters/${ch.id}`, { jwt: reader })).json()) as { doc: { body: string } };
+    const after = (await (await call(env, "GET", `/api/novels/${id}/chapters/${ch.id}`, { jwt: editor })).json()) as { doc: { body: string } };
     expect(after.doc.body).toBe("Agent viết.\n");
   });
 
@@ -164,7 +169,7 @@ describe("Worker: ảnh của chương", () => {
     const a = (await up.json()) as { key: string; caption: string };
     expect(a.key).toMatch(/^ch_abc123\/[0-9a-z]+-[0-9a-z]+-Zen-o-Day-Sat\.png$/);
     expect(a.caption).toBe("Phác thảo Zen");
-    const list = (await (await call(env, "GET", `/api/novels/${id}/assets?chapter=ch_abc123`, { jwt: reader })).json()) as { assets: { key: string; caption: string; kind: string }[] };
+    const list = (await (await call(env, "GET", `/api/novels/${id}/assets?chapter=ch_abc123`, { jwt: editor })).json()) as { assets: { key: string; caption: string; kind: string }[] };
     expect(list.assets).toHaveLength(1);
     expect(list.assets[0]).toMatchObject({ caption: "Phác thảo Zen", kind: "sketch" });
     const file = await call(env, "GET", `/api/novels/${id}/assets/file/${a.key}`, { jwt: reader });
@@ -233,7 +238,7 @@ describe("Worker: nháp tự lưu trên R2, đổi tên, thống kê", () => {
     const d1 = { baseBlob: "b1", baseCommit: "c1", body: "Đêm ấy — “Ừ.”", meta: { title: "T" }, updatedAt: 2000, device: "may-A" };
     expect((await call(env, "PUT", url, { jwt: editor, body: d1 })).status).toBe(200);
     expect([...env.BUCKET.objects.keys()]).toContain(`novels/${id}/drafts/ch_abc123.json`);
-    const got = (await (await call(env, "GET", url, { jwt: reader })).json()) as { draft: { body: string; by: string } };
+    const got = (await (await call(env, "GET", url, { jwt: editor })).json()) as { draft: { body: string; by: string } };
     expect(got.draft).toMatchObject({ body: "Đêm ấy — “Ừ.”", by: "tac-gia@example.com" });
     // thiết bị khác gửi bản cũ hơn → 409 kèm nháp mới nhất, không ghi đè
     const stale = await call(env, "PUT", url, { jwt: editor, body: { ...d1, body: "cũ", updatedAt: 1000, device: "may-B" } });
@@ -264,11 +269,11 @@ describe("Worker: nháp tự lưu trên R2, đổi tên, thống kê", () => {
     expect((await call(env, "PATCH", `/api/novels/${id}`, { jwt: reader, body: { title: "x" } })).status).toBe(403);
     expect((await call(env, "PATCH", `/api/novels/${id}`, { jwt: editor, body: { title: "  " } })).status).toBe(400);
     expect((await call(env, "PATCH", `/api/novels/${id}`, { jwt: editor, body: { title: "The Last Miracle" } })).status).toBe(200);
-    const list = (await (await call(env, "GET", "/api/novels?stats=1", { jwt: reader })).json()) as { novels: { id: string; title: string; stats: { chapters: number; words: number; acts: number } }[] };
+    const list = (await (await call(env, "GET", "/api/novels?stats=1", { jwt: editor })).json()) as { novels: { id: string; title: string; stats: { chapters: number; words: number; acts: number } }[] };
     expect(list.novels[0]).toMatchObject({ id, title: "The Last Miracle", stats: { chapters: 1, words: 3, acts: 1 } });
-    const pj = (await (await call(env, "GET", `/api/novels/${id}/file?path=content/project.json`, { jwt: reader })).json()) as { content: string };
+    const pj = (await (await call(env, "GET", `/api/novels/${id}/file?path=content/project.json`, { jwt: editor })).json()) as { content: string };
     expect(JSON.parse(pj.content).title).toBe("The Last Miracle");
-    const snap = (await (await call(env, "GET", `/api/novels/${id}/project`, { jwt: reader })).json()) as { project: { title: string } };
+    const snap = (await (await call(env, "GET", `/api/novels/${id}/project`, { jwt: editor })).json()) as { project: { title: string } };
     expect(snap.project.title).toBe("The Last Miracle");
   });
 
@@ -283,5 +288,107 @@ describe("Worker: nháp tự lưu trên R2, đổi tên, thống kê", () => {
     expect((await call(env, "POST", `/api/novels/${id}/assets?chapter=ch_abc123&kind=la-lung&name=a.png`, { jwt: editor, raw: png, type: "image/png" })).status).toBe(400);
     const list = (await (await call(env, "GET", `/api/novels/${id}/assets?chapter=ch_abc123`, { jwt: editor })).json()) as { assets: { kind: string }[] };
     expect(list.assets.map((a) => a.kind).sort()).toEqual(["action", "character", "other", "scenery"]);
+  });
+});
+
+// ---------------- Đăng nhập Google qua Firebase ----------------
+const PROJECT = "tlm-test";
+async function fbToken(email: string, over: Record<string, unknown> = {}, opts: { aud?: string; iss?: string; exp?: string } = {}) {
+  return new SignJWT({ email, email_verified: true, firebase: { sign_in_provider: "google.com" }, auth_time: Math.floor(Date.now() / 1000) - 10, ...over })
+    .setProtectedHeader({ alg: "RS256", kid: "k1" })
+    .setIssuer(opts.iss ?? `https://securetoken.google.com/${PROJECT}`)
+    .setAudience(opts.aud ?? PROJECT)
+    .setSubject("uid-123")
+    .setIssuedAt()
+    .setExpirationTime(opts.exp ?? "1h")
+    .sign(priv);
+}
+const fbEnv = () => fakeEnv({ FIREBASE_PROJECT_ID: PROJECT, ACCESS_TEAM_DOMAIN: undefined, ACCESS_AUD: undefined, AGENT_TOKENS: "claude:nbagent_0123456789abcdef0123456789abcdef" });
+
+describe("Worker: đăng nhập Google (Firebase), người đọc, agent token", () => {
+  it("token Google hợp lệ: email trong EDITOR_EMAILS là biên tập, còn lại là người đọc", async () => {
+    const env = fbEnv();
+    expect(await (await call(env, "GET", "/api/me", { bearer: await fbToken("tac-gia@example.com") })).json()).toMatchObject({ role: "editor" });
+    expect(await (await call(env, "GET", "/api/me", { bearer: await fbToken("ban-doc@gmail.com") })).json()).toMatchObject({ role: "viewer", name: "ban-doc@gmail.com" });
+  });
+
+  it("từ chối: sai project (aud/iss), hết hạn, không phải Google, email chưa xác minh, không có token", async () => {
+    const env = fbEnv();
+    expect((await call(env, "GET", "/api/me")).status).toBe(401);
+    expect((await call(env, "GET", "/api/me", { bearer: await fbToken("a@gmail.com", {}, { aud: "khac" }) })).status).toBe(401);
+    expect((await call(env, "GET", "/api/me", { bearer: await fbToken("a@gmail.com", {}, { iss: "https://securetoken.google.com/khac" }) })).status).toBe(401);
+    const expired = await call(env, "GET", "/api/me", { bearer: await fbToken("a@gmail.com", {}, { exp: "-1m" }) });
+    expect(expired.status).toBe(401);
+    expect(((await expired.json()) as { error: string }).error).toContain("hết hạn");
+    expect((await call(env, "GET", "/api/me", { bearer: await fbToken("a@gmail.com", { firebase: { sign_in_provider: "password" } }) })).status).toBe(403);
+    expect((await call(env, "GET", "/api/me", { bearer: await fbToken("a@gmail.com", { email_verified: false }) })).status).toBe(403);
+    // token ký bằng khoá khác
+    const other = await generateKeyPair("RS256");
+    const forged = await new SignJWT({ email: "tac-gia@example.com", email_verified: true, firebase: { sign_in_provider: "google.com" } }).setProtectedHeader({ alg: "RS256", kid: "k1" }).setIssuer(`https://securetoken.google.com/${PROJECT}`).setAudience(PROJECT).setSubject("x").setIssuedAt().setExpirationTime("1h").sign(other.privateKey);
+    expect((await call(env, "GET", "/api/me", { bearer: forged })).status).toBe(401);
+  });
+
+  it("/api/session đặt cookie HttpOnly + SameSite=Strict; cookie dùng được cho API; DELETE xoá cookie", async () => {
+    const env = fbEnv();
+    const t = await fbToken("ban-doc@gmail.com");
+    const r = await call(env, "POST", "/api/session", { body: { idToken: t } });
+    expect(r.status).toBe(200);
+    const sc = r.headers.get("set-cookie")!;
+    expect(sc).toMatch(/^nb_session=/);
+    expect(sc).toContain("HttpOnly");
+    expect(sc).toContain("SameSite=Strict");
+    expect(sc).toContain("Secure");
+    expect(sc).toMatch(/Max-Age=(3[0-5]\d\d|3600)/);
+    const cookie = sc.split(";")[0];
+    expect(await (await call(env, "GET", "/api/me", { cookie })).json()).toMatchObject({ role: "viewer" });
+    expect((await call(env, "POST", "/api/session", { body: { idToken: "rác" } })).status).toBe(401);
+    expect((await call(env, "POST", "/api/session", { body: { idToken: t }, origin: "https://evil.example" })).status).toBe(403);
+    expect((await call(env, "DELETE", "/api/session")).headers.get("set-cookie")).toContain("Max-Age=0");
+  });
+
+  it("người đọc: chỉ thấy chương truyện (không Act 0), không vào được API biên tập", async () => {
+    const env = fbEnv();
+    const editor = await fbToken("tac-gia@example.com");
+    const reader = await fbToken("ban-doc@gmail.com");
+    const files = {
+      "content/project.json": '{"title":"The Last Miracle"}\n',
+      "content/acts/act_n0.md": "---\nid: act_n0\ntitle: Act 0 · Outline & Trivia\norder: 0\nkind: notes\n---\n",
+      "content/acts/act_a1.md": "---\nid: act_a1\ntitle: Act 1\norder: 1\n---\n",
+      "content/chapters/ch_note00001.md": "---\nid: ch_note00001\ntitle: Outline bí mật\nact_id: act_n0\norder: 1\nstatus: draft\n---\nKết truyện: Zen chết.\n",
+      "content/chapters/ch_story0001.md": "---\nid: ch_story0001\ntitle: Tàn tro\nact_id: act_a1\norder: 1\nstatus: draft\n---\nĐêm ấy.\n",
+      "content/chapters/ch_story0002.md": "---\nid: ch_story0002\ntitle: Dấu thập đỏ\nact_id: act_a1\norder: 2\nstatus: draft\n---\nSáng hôm sau.\n",
+    };
+    const { id } = (await (await call(env, "POST", "/api/novels", { bearer: editor, body: { title: "TLM", files } })).json()) as { id: string };
+    expect((await call(env, "POST", "/api/novels", { bearer: reader, body: { title: "x" } })).status).toBe(403);
+
+    const list = (await (await call(env, "GET", "/api/novels?stats=1", { bearer: reader })).json()) as { novels: Record<string, unknown>[] };
+    expect(list.novels).toEqual([{ id, title: "TLM" }]);
+
+    const toc = (await (await call(env, "GET", `/api/novels/${id}/read`, { bearer: reader })).json()) as { acts: { title: string; chapters: { id: string; number: number }[] }[] };
+    expect(toc.acts.map((a) => a.title)).toEqual(["Act 1"]);
+    expect(toc.acts[0].chapters.map((c) => [c.id, c.number])).toEqual([["ch_story0001", 1], ["ch_story0002", 2]]);
+    expect(JSON.stringify(toc)).not.toContain("bí mật");
+
+    const ch = (await (await call(env, "GET", `/api/novels/${id}/read/ch_story0001`, { bearer: reader })).json()) as Record<string, unknown>;
+    expect(ch).toMatchObject({ title: "Tàn tro", number: 1, body: "Đêm ấy.\n", prev: null, next: { id: "ch_story0002", number: 2 } });
+    expect(ch).not.toHaveProperty("blob");
+    expect((await call(env, "GET", `/api/novels/${id}/read/ch_note00001`, { bearer: reader })).status).toBe(404);
+
+    for (const [m, p] of [["GET", "/project"], ["GET", "/chapters/ch_story0001"], ["GET", "/proposals"], ["GET", "/history"], ["GET", "/export"], ["GET", "/file?path=content/chapters/ch_note00001.md"], ["GET", "/drafts"], ["GET", "/assets?chapter=ch_story0001"]] as const) {
+      expect([m, p, (await call(env, m, `/api/novels/${id}${p}`, { bearer: reader })).status]).toEqual([m, p, 403]);
+    }
+    // ảnh chèn trong chương vẫn tải được
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    const a = (await (await call(env, "POST", `/api/novels/${id}/assets?chapter=ch_story0001&name=a.png`, { bearer: editor, raw: png, type: "image/png" })).json()) as { key: string };
+    expect((await call(env, "GET", `/api/novels/${id}/assets/file/${a.key}`, { bearer: reader })).status).toBe(200);
+    // biên tập cũng dùng được chế độ đọc
+    expect((await call(env, "GET", `/api/novels/${id}/read`, { bearer: editor })).status).toBe(200);
+  });
+
+  it("agent dùng token riêng (không cần Cloudflare Access); token sai bị từ chối", async () => {
+    const env = fbEnv();
+    expect(await (await call(env, "GET", "/api/me", { bearer: "nbagent_0123456789abcdef0123456789abcdef" })).json()).toMatchObject({ role: "agent", name: "agent:claude" });
+    expect((await call(env, "GET", "/api/me", { bearer: "nbagent_0123456789abcdef0123456789abcdeX" })).status).toBe(401);
+    expect((await call(fakeEnv({ FIREBASE_PROJECT_ID: PROJECT }), "GET", "/api/me", { bearer: "nbagent_0123456789abcdef0123456789abcdef" })).status).toBe(401);
   });
 });

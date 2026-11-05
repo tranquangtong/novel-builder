@@ -13,7 +13,7 @@ Hiện có hai cách chạy:
 | Ảnh theo chương | Có | Không |
 | Agent | API của Worker + service token | Pull request trên GitHub |
 
-Thiết lập Cloudflare: **[docs/CLOUDFLARE_SETUP.md](docs/CLOUDFLARE_SETUP.md)**. Mã nguồn vẫn ở repo này; GitHub Actions kiểm tra rồi deploy lên cả hai nơi.
+Thiết lập Cloudflare: **[docs/CLOUDFLARE_SETUP.md](docs/CLOUDFLARE_SETUP.md)**. Đăng nhập Google (Firebase), người đọc và chế độ đọc: **[docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)**. Mã nguồn vẫn ở repo này; GitHub Actions kiểm tra rồi deploy lên cả hai nơi.
 
 ## GitHub Pages: bật lần đầu (cách cũ)
 

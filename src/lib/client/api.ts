@@ -1,4 +1,5 @@
 "use client";
+import { refreshSession } from "./firebase";
 import { localApi, LocalApiError } from "./local-api";
 import { loadConnection } from "./connection";
 
@@ -44,14 +45,18 @@ export function relTime(ts: number) {
 /** Gọi Cloudflare Worker cùng domain. Cookie của Cloudflare Access tự đi kèm. */
 export async function cloudFetch<T = unknown>(path: string, method = "GET", body?: unknown): Promise<T> {
   let res: Response;
-  try {
-    res = await fetch(path, {
+  const send = () =>
+    fetch(path, {
       method,
       headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       cache: "no-store",
       credentials: "same-origin",
     });
+  try {
+    res = await send();
+    // phiên Google hết hạn giữa chừng: gia hạn rồi gửi lại một lần
+    if (res.status === 401 && (await refreshSession())) res = await send();
   } catch (e) {
     throw new ApiError(`Không kết nối được máy chủ (${(e as Error).message})`, 0, "network", {});
   }

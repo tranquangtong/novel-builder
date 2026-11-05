@@ -151,3 +151,22 @@ Lỗi gốc của "ảnh luôn ở đầu chương": nút chèn đặt ảnh ở
 - **Thanh cuộn**: một kiểu mảnh, cùng màu cho toàn trang (`scrollbar-width: thin`).
 - **Font nội dung chương**: trả về Literata.
 - **Kết quả**: unit 47/47, E2E bản tĩnh 28/28, E2E Cloudflare 6/6, lint/typecheck sạch.
+
+## Bổ sung 05/11/2026: đăng nhập Google (Firebase), người đọc, chế độ đọc
+
+- **Kiểm tra token** theo đúng `firebase-admin-node/src/auth/token-verifier.ts` (đọc mã nguồn): RS256 + `kid`, `aud` = project ID, `iss` = `https://securetoken.google.com/<project>`, `sub` 1–128 ký tự.
+  - Khoá công khai lấy từ `.../service_accounts/v1/jwk/securetoken@system.gserviceaccount.com`. Đã kiểm tra: trả về đúng các `kid` như endpoint x509 mà Admin SDK dùng.
+  - Thêm điều kiện: chỉ nhận đăng nhập bằng Google, email đã xác minh.
+- **CSP** cho popup Google, theo mã nguồn `firebase-js-sdk`: `apis.google.com/js/api.js`, iframe `<authDomain>/__/auth/iframe`, `identitytoolkit.googleapis.com`, `securetoken.googleapis.com`.
+- **Unit** (52/52):
+  - email biên tập thì là editor, còn lại là người đọc;
+  - từ chối: sai `aud`/`iss`, hết hạn, ký bằng khoá khác, không phải Google, email chưa xác minh;
+  - cookie phiên HttpOnly + SameSite=Strict, có kiểm tra Origin;
+  - người đọc chỉ thấy chương truyện (Act 0 bị ẩn, mở ghi chú Act 0 trả 404); 8 API biên tập trả 403; ảnh vẫn tải được;
+  - token agent đúng/sai.
+- **E2E Cloudflare** (7/7):
+  - tác giả mở "Chế độ đọc" → mục lục → chương → chương sau → "Chế độ viết";
+  - người đọc vào trang biên tập thì bị chuyển sang `/read`; có watermark email; `user-select: none`; copy, chuột phải và selectstart bị chặn; Ctrl+A không bôi đen;
+  - rời cửa sổ thì nội dung mờ; bản in bị ẩn; API biên tập trả 403.
+- **Build thử với cấu hình Firebase giả**: màn hình "Đăng nhập bằng Google" hiện đúng ở `/library` và `/read`; CSP có đủ các domain; không có lỗi JavaScript.
+- **CHƯA kiểm chứng**: popup Google thật với project Firebase của bạn. Môi trường của tớ không có project và tài khoản để thử. Làm theo `docs/FIREBASE_SETUP.md`, bước 3.

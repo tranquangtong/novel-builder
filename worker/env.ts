@@ -10,6 +10,10 @@ export interface Env {
   EDITOR_EMAILS?: string;
   /** Client ID của service token dành cho agent, cách nhau bằng dấu phẩy. */
   AGENT_CLIENT_IDS?: string;
+  /** Firebase project ID: bật đăng nhập bằng Google qua Firebase Authentication. */
+  FIREBASE_PROJECT_ID?: string;
+  /** (secret) Token cho agent gọi API: "tên:nbagent_…" cách nhau bằng dấu phẩy. */
+  AGENT_TOKENS?: string;
   /** CHỈ dùng khi chạy local (wrangler dev): bỏ qua Access cho host localhost. */
   DEV_AUTH_EMAIL?: string;
 }

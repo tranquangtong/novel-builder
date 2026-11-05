@@ -96,12 +96,16 @@ Lấy blob sha bằng `git rev-parse HEAD:content/chapters/<id>.md` hoặc từ 
 ## 8. Khi bản thảo nằm trên Cloudflare (không có repo git)
 
 Bộ truyện trên Cloudflare không có repo git để clone. Agent đọc và đề xuất qua API của
-trang, bằng **service token** của Cloudflare Access (tác giả cấp riêng cho agent):
+trang, bằng **token agent** do tác giả cấp riêng (nằm trong biến môi trường, không bao giờ
+ghi vào file hay chat):
 
 ```
-CF-Access-Client-Id: <client id>
-CF-Access-Client-Secret: <client secret>
+Authorization: Bearer nbagent_…
 ```
+
+(Khi trang còn bật Cloudflare Access, dùng service token: `CF-Access-Client-Id` /
+`CF-Access-Client-Secret`.) Tài khoản Google của người đọc **không** dùng được các API dưới đây —
+người đọc chỉ có chế độ đọc.
 
 Quy tắc ở các mục 2–7 vẫn giữ nguyên. Các thao tác dành cho agent:
 

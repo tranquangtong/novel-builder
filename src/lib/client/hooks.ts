@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 import type { ProjectSnapshot } from "../domain/types";
 import { IS_CLOUD_BUILD } from "./connection";
+import { refreshSession } from "./firebase";
 
 export function useProject(enabled = true) {
   return useQuery({ queryKey: ["project"], enabled, queryFn: () => api<ProjectSnapshot>("/api/project"), staleTime: 10_000, refetchOnWindowFocus: true });
@@ -35,6 +36,8 @@ export function useCloudMe() {
       let r: Response;
       try {
         r = await fetch("/api/me", { cache: "no-store", credentials: "same-origin" });
+        // cookie phiên hết hạn nhưng vẫn còn đăng nhập Google → lấy phiên mới rồi thử lại
+        if (r.status === 401 && (await refreshSession())) r = await fetch("/api/me", { cache: "no-store", credentials: "same-origin" });
       } catch (e) {
         if (IS_CLOUD_BUILD) throw new CloudAuthError(`Không gọi được máy chủ: ${e instanceof Error ? e.message : e}`, 0);
         return null;
