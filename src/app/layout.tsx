@@ -9,7 +9,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "The Last Miracle · Xưởng viết",
+  title: "Novel Builder",
   description: "Công cụ viết riêng tư",
   robots: { index: false, follow: false },
 };

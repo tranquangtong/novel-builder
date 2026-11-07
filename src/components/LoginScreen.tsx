@@ -9,7 +9,7 @@ export function LoginScreen({ onDone }: { onDone: () => void }) {
   return (
     <div className="login-wrap" data-testid="login-screen">
       <div className="login-card card card-pad">
-        <h1>The Last Miracle</h1>
+        <h1>Novel Builder</h1>
         <p className="muted">Đăng nhập bằng tài khoản Google để đọc truyện.</p>
         <button
           className="btn primary login-google"

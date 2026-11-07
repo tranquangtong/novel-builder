@@ -95,7 +95,7 @@ export function Shell({ children, conn, cloud = false }: { children: React.React
       <aside className="sidebar" aria-label="Điều hướng">
         <div className="sidebar-head">
           <div className="brand">
-            <span className="brand-title">{project.data?.project.title ?? (cloud ? "Novel Builder" : "The Last Miracle")}</span>
+            <span className="brand-title">{project.data?.project.title ?? "Novel Builder"}</span>
             {cloud && connected && <Link href="/novels" className="btn ghost sm" style={{ marginLeft: "auto" }} title="Chuyển sang bộ truyện khác" data-testid="switch-novel">Đổi bộ</Link>}
           </div>
           <div className="brand-sub">{repoLabel}{connected ? ` · ${project.data ? `${project.data.chapters.filter((c) => !c.note).length} chương` : "đang tải…"}` : ""}</div>
