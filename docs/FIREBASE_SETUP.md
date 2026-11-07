@@ -4,12 +4,23 @@ Sau khi thiết lập:
 - Ai có tài khoản Google cũng đăng nhập được và trở thành **người đọc**. Người đọc chỉ thấy **chế độ đọc**: mục lục và các chương truyện. Họ không thấy Act 0 (outline, trivia), đề xuất, lịch sử hay bản nháp. Máy chủ chặn mọi API khác (403), kể cả khi người đọc gọi thẳng.
 - Email trong biến `EDITOR_EMAILS` (của bạn: `tongquangtran@gmail.com`) có **cả hai vai trò**: biên tập như hiện nay, và mục **Chế độ đọc** ở menu trái để đọc như người đọc.
 
+## 0. Tạo project Firebase (nếu chưa có)
+
+1. Vào [console.firebase.google.com](https://console.firebase.google.com/) bằng tài khoản Google của bạn → **Create a project** (hoặc **Get started by setting up a Firebase project**).
+2. Tên project: ví dụ `novel-builder`. Firebase tự gắn thêm đuôi để tạo **project ID** (ví dụ `novel-builder-1a2b3`).
+3. Google Analytics: **tắt** (không cần). Các tuỳ chọn AI/Gemini cũng không cần.
+4. **Create project** → chờ xong → **Continue**.
+
+Gói mặc định (Spark) miễn phí và không cần thẻ thanh toán. Đăng nhập Google chạy được trên gói này.
+
 ## 1. Bật đăng nhập Google trong Firebase
 
 Trong [Firebase console](https://console.firebase.google.com/), mở project của bạn:
 
 1. **Build → Authentication → Get started** (nếu chưa bật).
-2. Tab **Sign-in method** → **Add new provider** → **Google** → bật **Enable**, chọn *support email* → **Save**.
+2. Tab **Sign-in method** → **Add new provider** → **Google** → bật **Enable**.
+   - *Public-facing name*: tên người đọc thấy trong cửa sổ đăng nhập, ví dụ `The Last Miracle`.
+   - *Support email*: chọn email của bạn → **Save**.
 3. Tab **Settings** → **Authorized domains** → **Add domain** → `novel-builder.tongquangtran.workers.dev`.
 4. **Project settings** (bánh răng) → tab **General** → mục **Your apps**:
    - Nếu chưa có web app thì bấm **</>** để tạo (không cần Firebase Hosting).
