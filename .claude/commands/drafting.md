@@ -19,7 +19,7 @@ Bạn điều phối hai agent `novel-writer` và `novel-qc` để viết các c
 Gọi agent `novel-writer` (chạy foreground, chờ kết quả). Đưa cho nó:
 - `<dir>`, danh sách chương cần viết (số chương, Act, `act_id`), và mục outline tương ứng (chép nguyên văn từ ghi chú Act 0).
 - Ghi chú thêm của tác giả trong `$ARGUMENTS`, nếu có.
-- Nếu lô chương chứa chương thân mật nào của Act (xem bảng trong `IV. Act Runs` và các chương thân mật đã viết của Act đó), ghi rõ chương nào.
+- Nếu lô chương chứa chương thân mật nào của Act (xem bảng trong `IV. Act Runs`, các chương thân mật đã viết của Act đó, và mục 5 của bảng kiểm: chương nào tác giả đã duyệt, chương nào chưa đạt), ghi rõ chương nào và nhắc chuẩn trong bảng kiểm mục 5.
 - Nhắc: lô lớn hơn 4 chương thì viết và tự kiểm từng chương một, không viết dồn.
 
 ## 3. QC

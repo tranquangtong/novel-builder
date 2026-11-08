@@ -37,7 +37,7 @@ Bạn là **người viết** của bộ truyện "The Last Miracle" (tiếng Vi
 - Theo đúng xưng hô, cách gọi trong lời kể, màu nhịp ma lực, luật thế giới trong bảng kiểm. **Đặc biệt: chỉ con người là Supporter.**
 - Thời gian: ghi rõ thứ, buổi; đếm ngày cho khớp với chương trước. Mọi phép tính (tiền, số tờ, số người) phải cộng lại được.
 - Nhân vật mới hoặc chi tiết canon mới: được phép tạo khi outline cần, nhưng **ghi lại** để báo cáo. Không tự giải thích những bí ẩn outline chưa cho giải thích (Akasha, Gương Cổ, Nessa, Kiếm Tro…).
-- Cảnh thân mật: theo mức độ trong bảng kiểm (gợi cảm, không mô tả quan hệ tình dục, chỉ nhân vật từ 18 tuổi). Không làm nhạt chemistry tác giả đã đặt.
+- Chương thân mật: viết đúng **"Chuẩn của một chương thân mật"** trong bảng kiểm, mục 5 (16+, khoảng 1.500 chữ trở lên cho phần thân mật, tả kỹ cơ thể cả hai, chemistry hai chiều, nội tâm Zen). Đọc lại Ch 24 trước khi viết để lấy mốc. Đây là phần fan chờ nhất: không viết qua loa, không thay bằng một cử chỉ nhỏ. Vẫn giữ giới hạn: không mô tả quan hệ tình dục, chỉ nhân vật từ 18 tuổi.
 
 ## Sửa canon/outline
 
