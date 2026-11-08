@@ -32,6 +32,7 @@ Muốn thử trước khi có repo thật: trên trang Kết nối, bấm **Th�
 ## Cách làm việc với Claude
 
 - **Sửa bản thảo:** mở phiên Claude Code có gắn repo bản thảo, rồi giao việc, ví dụ "kiểm tra continuity Ch 10–11 với canon Kiếm Tro". Bạn có thể dán **Gói tài liệu** tạo từ trang. Claude đọc `AGENTS.md`, làm trên nhánh riêng, mở PR. Bạn mở trang → **Đề xuất chỉnh sửa** → xem trước/sau → **Chấp nhận**, **Yêu cầu sửa** hoặc **Đóng**.
+- **Viết chương mới bằng hai agent:** trong phiên Claude Code gắn repo `novel-builder`, gõ `/drafting 41-45` (kèm ghi chú nếu muốn). Agent `novel-writer` đọc outline và các chương trước rồi viết; agent `novel-qc` soát chính tả, canon, outline, xưng hô và số liệu; hai bên sửa qua lại đến khi đạt (tối đa 3 vòng), rồi Claude mở **một** đề xuất trên trang. Cấu hình ở `.claude/agents/`, `.claude/commands/drafting.md`; bảng kiểm canon ở `.claude/novel/canon-checklist.md`; script gọi API ở `.claude/novel/nb.py`. Cần token agent `nbagent_…` trong môi trường (xem `docs/FIREBASE_SETUP.md`).
 - **Sửa chính trang web:** giao việc trong phiên Claude Code gắn repo `novel-builder`. Claude sửa mã, chạy test, push; GitHub Actions tự build và deploy. Bạn không cần chạy gì trên máy.
 
 ## Bảo mật: đọc kỹ
