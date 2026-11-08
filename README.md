@@ -1,4 +1,4 @@
-# The Last Miracle — Xưởng viết riêng tư
+# Novel Builder — Xưởng viết riêng tư
 
 Trang web để viết và quản lý **nhiều bộ tiểu thuyết dài kỳ**, mỗi chương có thể kèm ảnh (phác thảo, minh hoạ, tham khảo). Bạn cộng tác với agent qua đề xuất chỉnh sửa và tự quyết định nhập vào bản chính.
 
@@ -39,6 +39,14 @@ Bản thảo "The Last Miracle" nằm trên Cloudflare; **không còn repo bản
 
 ## Bảo mật: đọc kỹ
 
+### Cloudflare
+
+- Đăng nhập bằng Google qua Firebase. Worker tự kiểm tra ID token của Firebase ở mọi request API.
+- Email nằm trong `EDITOR_EMAILS` → **biên tập**. Mọi tài khoản Google khác → **người đọc**: chỉ có chế độ đọc (mục lục, chương truyện), máy chủ chặn mọi API khác (403).
+- Agent dùng token `nbagent_…`. Token phải khớp một mục trong secret `AGENT_TOKENS` của Worker (đặt từ secret `NB_AGENT_TOKENS` trên GitHub). Agent chỉ đọc, mở đề xuất và bình luận; không lưu thẳng vào bản chính, không nhập đề xuất, không xoá ảnh. Token lưu trong môi trường của phiên Claude Code, không bao giờ ghi vào file hay dán vào chat. Nghi lộ token thì đổi `NB_AGENT_TOKENS` rồi chạy lại workflow.
+
+### GitHub Pages (cách cũ)
+
 - Trang Pages là **public**, nhưng chỉ chứa mã. Bản thảo chỉ được tải khi có token đọc được repo private, và GitHub tự kiểm tra quyền của token.
 - Token **chỉ nằm trong trình duyệt của bạn**: trong tab hiện tại, hoặc trên thiết bị nếu tick "Ghi nhớ". Token chỉ được gửi tới `api.github.com`; Content-Security-Policy của trang chặn kết nối tới mọi địa chỉ khác.
 - Chỉ tick "Ghi nhớ trên thiết bị này" trên máy riêng. Mất máy hoặc nghi lộ token thì thu hồi ở GitHub → Settings → Developer settings → Personal access tokens.
@@ -59,7 +67,8 @@ Bản thảo "The Last Miracle" nằm trên Cloudflare; **không còn repo bản
 ### Kiến trúc (Cloudflare)
 
 ```
-Trình duyệt ──(Cloudflare Access: OTP/Google)──► Worker novel-builder
+Trình duyệt ──(Google qua Firebase: ID token)──► Worker novel-builder
+Agent ───────(Authorization: Bearer nbagent_…)──┘
                                                    ├─ trang tĩnh (out/)
                                                    └─ /api/novels/<id>/…  ── cùng mã nghiệp vụ với chế độ demo/GitHub
                                                         ├─ R2: novels/<id>/objects/…  (nội dung + commit, bất biến theo sha)
@@ -67,7 +76,7 @@ Trình duyệt ──(Cloudflare Access: OTP/Google)──► Worker novel-build
                                                         └─ D1: novels, repo_state (nhánh + đề xuất; ghi kiểu compare-and-swap)
 ```
 
-- Vai trò: email trong `EDITOR_EMAILS` → **biên tập**; email khác được Access cho vào → **chỉ đọc**; service token trong `AGENT_CLIENT_IDS` → **agent** (chỉ đọc + mở đề xuất + bình luận).
+- Vai trò: email trong `EDITOR_EMAILS` → **biên tập**; tài khoản Google khác → **người đọc** (chỉ chế độ đọc); token trong `AGENT_TOKENS` → **agent** (chỉ đọc + mở đề xuất + bình luận). Worker vẫn nhận phiên Cloudflare Access và service token trong `AGENT_CLIENT_IDS` nếu bạn bật lại Access, nhưng hiện Access đã tắt.
 - Lịch sử, phục hồi, đề xuất, review, gói tài liệu chạy y như trước: Worker dùng lại đúng lõi `ManuscriptService` + mini-git, chỉ đổi chỗ lưu.
 
 ### Kiến trúc (GitHub Pages, cách cũ)
@@ -89,11 +98,12 @@ Chi tiết: [docs/SCHEMA_AND_FLOWS.md](docs/SCHEMA_AND_FLOWS.md) · Bảo mật 
 
 ## Hạn chế còn lại
 
-- Worker đã deploy và Access đã bật (trang chuyển sang đăng nhập Access). Phần trong Worker sau khi đăng nhập mới chỉ được kiểm tra trên workerd (`wrangler dev`) với R2/D1 local.
-- Chuyển từ GitHub sang Cloudflare chỉ mang theo **bản chính hiện tại**, không mang lịch sử commit cũ (lịch sử vẫn nằm ở repo GitHub).
+- Test E2E của Worker chạy trên workerd (`wrangler dev`) với R2/D1 local, không chạy trên trang thật.
+- Chuyển từ GitHub sang Cloudflare chỉ mang theo **bản chính hiện tại**, không mang lịch sử commit cũ. Xoá repo GitHub cũ là mất lịch sử đó.
+- API không cho đọc `AGENTS.md` trên trang (`/file` chỉ nhận đường dẫn `content/…`). Agent đọc bản trong repo này: `templates/manuscript/AGENTS.md`.
 - Ảnh chưa có phiên bản: tải ảnh mới là thêm ảnh mới; xóa thì ảnh chuyển vào thùng rác trên R2, lấy lại thủ công.
-- Đăng nhập dùng token dán tay, không có nút "Đăng nhập với GitHub", vì luồng OAuth của GitHub cần máy chủ: bước đổi mã không hỗ trợ CORS. Token hết hạn thì tạo token mới và dán lại.
+- (GitHub Pages) Đăng nhập dùng token dán tay, không có nút "Đăng nhập với GitHub", vì luồng OAuth của GitHub cần máy chủ: bước đổi mã không hỗ trợ CORS. Token hết hạn thì tạo token mới và dán lại.
 - Chỉ chấp nhận được **toàn bộ** đề xuất. Chưa có gộp 3 chiều trong editor: khi xung đột thì so sánh rồi chọn bản giữ lại.
-- Nếu Claude mở PR bằng chính tài khoản của token, nút "approval chính thức trên GitHub" không dùng được (GitHub cấm tự approve). "Chấp nhận" (merge) vẫn hoạt động.
+- (GitHub Pages) Nếu Claude mở PR bằng chính tài khoản của token, nút "approval chính thức trên GitHub" không dùng được (GitHub cấm tự approve). "Chấp nhận" (merge) vẫn hoạt động.
 - Chế độ demo lưu trong trình duyệt; mỗi trình duyệt có kho demo riêng.
 - Chưa có: nhập Google Docs từ URL, xuất DOCX/PDF, cộng tác thời gian thực.

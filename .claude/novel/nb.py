@@ -18,7 +18,8 @@ Lệnh:
   proposals                       Liệt kê đề xuất đang mở.
   propose --title T --body-file F [--dry-run] <file>...
                                   Mở đề xuất. Mỗi file phải có frontmatter `id:`; chương → content/chapters/<id>.md.
-                                  Muốn sửa file khác (Act, ghi chú…), dùng dạng `content/acts/act_x.md=duong/dan/file.md`.
+                                  Muốn sửa file khác (Act, ghi chú…), dùng dạng `content/acts/act_x.md=duong/dan/file.md`
+                                  (hoặc `AGENTS.md=duong/dan/file.md`).
 """
 import json
 import os
@@ -122,7 +123,7 @@ def main(argv):
         files = [a for i, a in enumerate(args) if i not in skip and a != "--dry-run"]
         changes = {}
         for f in files:
-            if "=" in f and f.startswith("content/"):
+            if "=" in f and (f.startswith("content/") or f.startswith("AGENTS.md=")):
                 path, src = f.split("=", 1)
             else:
                 src = f
@@ -131,7 +132,7 @@ def main(argv):
                     sys.exit(f"{src}: thiếu `id:` trong frontmatter")
                 path = f"content/chapters/{m.group(1)}.md"
             text = open(src, encoding="utf-8").read()
-            if "\\!" in text:
+            if "\\!" in text and path != "AGENTS.md":  # AGENTS.md nhắc tới chính ký tự này
                 sys.exit(f"{src}: còn ký tự \\! (AGENTS.md mục 9)")
             changes[path] = text
         head = project()["headSha"]
