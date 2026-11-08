@@ -8,18 +8,18 @@ Hiện có hai cách chạy:
 |---|---|---|
 | Trang | Cloudflare Worker | `tranquangtong.github.io/novel-builder` |
 | Bản thảo | R2 (chương, phiên bản, ảnh) + D1 (trạng thái nhỏ) | Repo GitHub private |
-| Đăng nhập | Cloudflare Access (OTP email/Google) | Dán fine-grained token |
+| Đăng nhập | Google (Firebase) | Dán fine-grained token |
 | Nhiều bộ truyện | Có, tạo ngay trên trang | Mỗi bộ một repo |
 | Ảnh theo chương | Có | Không |
-| Agent | API của Worker + service token | Pull request trên GitHub |
+| Agent | API của Worker + token agent `nbagent_…` | Pull request trên GitHub |
 
 Thiết lập Cloudflare: **[docs/CLOUDFLARE_SETUP.md](docs/CLOUDFLARE_SETUP.md)**. Đăng nhập Google (Firebase), người đọc và chế độ đọc: **[docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)**. Mã nguồn vẫn ở repo này; GitHub Actions kiểm tra rồi deploy lên cả hai nơi.
 
 ## GitHub Pages: bật lần đầu (cách cũ)
 
 1. **Bật GitHub Pages cho repo này:** Settings → Pages → *Build and deployment* → Source: **GitHub Actions**.
-2. **Tạo repo bản thảo private**, ví dụ `the-last-miracle-manuscript`, tick "Add a README".
-3. (Tùy chọn) Settings → Secrets and variables → Actions → **Variables** → thêm `MANUSCRIPT_REPO` = `tranquangtong/the-last-miracle-manuscript`. Trang Kết nối sẽ điền sẵn tên repo này.
+2. **Tạo repo bản thảo private**, ví dụ `ten-truyen-manuscript`, tick "Add a README".
+3. (Tùy chọn) Settings → Secrets and variables → Actions → **Variables** → thêm `MANUSCRIPT_REPO` = `owner/ten-truyen-manuscript`. Trang Kết nối sẽ điền sẵn tên repo này.
 4. Mỗi lần có push lên nhánh mặc định, workflow `.github/workflows/pages.yml` chạy lint, typecheck, unit test, build và E2E, rồi mới deploy. Theo dõi ở tab **Actions**.
 5. Mở trang → **Kết nối GitHub** → bấm link tạo **fine-grained token** (đã điền sẵn quyền):
    - Repository access: **Only select repositories** → chọn **đúng repo bản thảo**.
@@ -31,7 +31,9 @@ Muốn thử trước khi có repo thật: trên trang Kết nối, bấm **Th�
 
 ## Cách làm việc với Claude
 
-- **Sửa bản thảo:** mở phiên Claude Code có gắn repo bản thảo, rồi giao việc, ví dụ "kiểm tra continuity Ch 10–11 với canon Kiếm Tro". Bạn có thể dán **Gói tài liệu** tạo từ trang. Claude đọc `AGENTS.md`, làm trên nhánh riêng, mở PR. Bạn mở trang → **Đề xuất chỉnh sửa** → xem trước/sau → **Chấp nhận**, **Yêu cầu sửa** hoặc **Đóng**.
+Bản thảo "The Last Miracle" nằm trên Cloudflare; **không còn repo bản thảo trên GitHub**. Mọi phiên Claude Code chỉ cần gắn repo `novel-builder`.
+
+- **Sửa bản thảo:** mở phiên Claude Code gắn repo `novel-builder`, rồi giao việc, ví dụ "kiểm tra continuity Ch 10–11 với canon Kiếm Tro". Claude đọc và gửi đề xuất qua API của trang (`.claude/novel/nb.py`, quy tắc trong `templates/manuscript/AGENTS.md`), bằng token agent `nbagent_…` lưu trong môi trường. Bạn mở trang → **Đề xuất chỉnh sửa** → xem trước/sau → **Chấp nhận**, **Yêu cầu sửa** hoặc **Đóng**.
 - **Viết chương mới bằng hai agent:** trong phiên Claude Code gắn repo `novel-builder`, gõ `/drafting 41-45` (kèm ghi chú nếu muốn). Agent `novel-writer` đọc outline và các chương trước rồi viết; agent `novel-qc` soát chính tả, canon, outline, xưng hô và số liệu; hai bên sửa qua lại đến khi đạt (tối đa 3 vòng), rồi Claude mở **một** đề xuất trên trang. Cấu hình ở `.claude/agents/`, `.claude/commands/drafting.md`; bảng kiểm canon ở `.claude/novel/canon-checklist.md`; script gọi API ở `.claude/novel/nb.py`. Cần token agent `nbagent_…` trong môi trường (xem `docs/FIREBASE_SETUP.md`).
 - **Sửa chính trang web:** giao việc trong phiên Claude Code gắn repo `novel-builder`. Claude sửa mã, chạy test, push; GitHub Actions tự build và deploy. Bạn không cần chạy gì trên máy.
 

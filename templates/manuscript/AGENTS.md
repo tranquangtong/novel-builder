@@ -136,3 +136,28 @@ nếu bản chính đã sửa cùng file.
 
 Agent **không** thể lưu thẳng vào bản chính, nhập đề xuất hay xóa ảnh. Tác giả duyệt và
 nhập đề xuất trên trang.
+
+## 9. Quy ước văn phong (cho chương mới)
+
+Áp dụng cho chương viết từ Ch 13 trở đi. **Không viết lại Ch 1–12** vì mục này; chỉ sửa lỗi cơ học (chính tả, câu trùng, mâu thuẫn chi tiết). Tác giả sẽ hiệu chỉnh giọng văn Act 1 một lượt sau Ch 25.
+
+- **Giọng chuẩn:** như Ch 13–15. Tiết chế, nhiều ẩn ý, câu ngắn, thoại mang nghĩa phụ. Ưu tiên chi tiết cụ thể hơn chuỗi tính từ nhấn mạnh (“mị hoặc”, “kinh hoàng”, “tuyệt đối”).
+- **Cách gọi nhân vật trong lời kể:** Dan = “hắn”, Anki = “cậu ta”, Puna = “anh ta”, Sali = “cậu ta”, Zen = “cậu”. Chỉ dùng “gã” cho người ngoài đội hoặc phản diện.
+- **Xưng hô trong thoại:** Anki gọi Zen “nhóc”; Puna xưng “tao/mày”, gọi Zen “nhóc con”; Sali xưng “tớ/cậu”; Dan gọi Zen “cậu”; Zen gọi “anh Dan”, “anh Puna”, gọi Anki là “cậu”.
+- **Biệt danh “tiểu Supporter”:** Dan (và Sali khi trêu) dùng 1–2 lần mỗi chương, ở khoảnh khắc trêu hoặc dịu dàng. Không dùng ở cao trào cảm xúc nặng.
+- **Không phá vách ngăn thứ tư:** lời kể không nhắc “chương sau”, không dùng thuật ngữ làm truyện (chemistry, arc, foreshadow), không nói trước tương lai ngoài hiểu biết của nhân vật.
+- **Định dạng:** tiêu đề cảnh dạng `### **Tên Cảnh**`; chỉ in nghiêng cho suy nghĩ, tiếng động và lệnh phép (*Kết nối!*, *BOONG!*), không in nghiêng cả đoạn; không để lại ký tự `\!`.
+
+## 10. Rà soát câu từ và chính tả trước khi gửi
+
+Mọi chương mới hoặc đoạn sửa phải qua lượt rà này **trước khi** gửi đề xuất. Lỗi kỳ quặc thường không phải sai chính tả mà là thiếu chữ, ẩn dụ khó hiểu, câu có hai nghĩa hoặc chi tiết tự mâu thuẫn.
+
+1. **Đọc lại toàn văn bản định gửi**, từng câu một, như một người chưa biết truyện. Không đọc “bản trong đầu”. Sau khi sửa, đọc lại cả đoạn quanh chỗ sửa.
+2. **Thiếu chữ:** soát giới từ, chủ ngữ, động từ (ví dụ “gã Nagareen hôm hẻm sương” thiếu “ở”). Câu nào đọc lên vấp thì viết lại.
+3. **Ẩn dụ và hình ảnh:** phải diễn đạt lại được bằng một câu nghĩa đen. Nếu người đọc phải đoán thì viết thẳng. Không dùng ẩn dụ trong thông tin quan trọng hoặc lời báo cáo (ví dụ “bước vào hình của chính mình” thay cho “mặt cậu đã nằm sẵn trong quả cầu”).
+4. **Từ hai nghĩa:** thận trọng với “đủ”, “chịu”, “được”, “đổi lấy”… khi nghĩa có thể bị đảo. Có điều kiện thì viết rõ “chỉ cần”.
+5. **Đếm và đối chiếu trong chương:** bao nhiêu người, ai đứng đâu, ai biết gì lúc nào, đồ vật nào có mặt (áo choàng đã “biến mất” thì đừng tả lại là đang mặc). “Cả bốn người nhìn sang Anki” là sai nếu Anki là một trong bốn.
+6. **Chiều của sự đổi chác:** với “đổi”, “bỏ”, “mất”, “được”, kiểm tra ai mất, ai được.
+7. **Soát cơ học:** chính tả và dấu thanh, từ lặp liền nhau, đoạn trùng, tên nhân vật xuất hiện trước khi giới thiệu, in nghiêng lệch, khoảng trắng thừa, ký tự `\!`.
+8. **Đối chiếu chương trước:** mọi chi tiết lấy từ chương cũ phải đọc lại đúng đoạn đó, không dựa vào trí nhớ.
+9. **Ghi trong mô tả đề xuất:** đã rà theo mục này, kèm danh sách chương/đoạn đã đọc.

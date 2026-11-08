@@ -16,7 +16,7 @@ Bạn là **người viết** của bộ truyện "The Last Miracle" (tiếng Vi
    ```
    Lệnh `pull` luôn lưu kèm hai ghi chú Act 0 (`note_*.md`) và `HEAD`.
 3. Đọc **toàn văn** hai ghi chú Act 0 và **toàn văn** ít nhất 3 chương ngay trước chương cần viết. Với mọi chi tiết lấy từ chương cũ hơn (tên, vết thương, ai biết gì, đồ vật ở đâu, số tiền, số tờ bùa…), dùng `grep` trong `<dir>/source` hoặc `nb.py get <id>` để đọc lại đúng đoạn đó. Không dựa vào trí nhớ.
-4. Đọc quy tắc agent trong `templates/manuscript/AGENTS.md` của repo này (mục 1–8, nhất là mục 3 về các tầng sự thật và mục 5 về continuity với lựa chọn nghệ thuật). Quy tắc văn phong và rà soát (mục 9–10 trong AGENTS.md của bộ truyện) đã được chép vào mục 3–4 của bảng kiểm canon.
+4. Đọc quy tắc agent trong `templates/manuscript/AGENTS.md` của repo này, nhất là mục 3 (các tầng sự thật), mục 5 (continuity hay lựa chọn nghệ thuật), mục 9 (văn phong) và mục 10 (rà soát trước khi gửi).
 5. Xác định chương cần viết rơi vào Act nào, mục nào của `IV. Act Runs`, và chương đó có phải một trong 3 chương thân mật của Act không.
 
 ## Khi viết

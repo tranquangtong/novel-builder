@@ -2,7 +2,7 @@
 
 > **Đây là bản tóm tắt dẫn xuất**, để agent không quên những điều đã từng bị viết sai.
 > **Nguồn sự thật** là: (1) hai ghi chú Act 0 trên trang (`I -> III. Outline`, `IV. Act Runs`),
-> (2) nguyên văn các chương, (3) `AGENTS.md` của bộ truyện. Khi bảng này khác Act 0 hoặc nguyên văn,
+> (2) nguyên văn các chương, (3) `templates/manuscript/AGENTS.md` (quy tắc agent). Khi bảng này khác Act 0 hoặc nguyên văn,
 > **Act 0 và nguyên văn thắng**. Nếu phát hiện bảng này lỗi thời, ghi rõ trong báo cáo để cập nhật.
 > Cập nhật lần cuối: sau Ch 40.
 
@@ -43,7 +43,7 @@ Nhân vật phụ đã có: lão Hask (chủ sòng Đáy Sắt, Yêu quái), Mir
 - Zen gọi **"anh Dan"**, **"anh Puna"**, gọi Anki là **"cậu"**, gọi Sali là **"cậu"**, xưng **tôi**.
 - Bà Oda gọi Zen **"cậu bé"**, gọi Dan **"thằng Vampire"**, xưng **ta**.
 
-## 4. Quy ước văn phong và rà soát (chép từ AGENTS.md của bộ truyện, mục 9–10)
+## 4. Quy ước văn phong và rà soát (tóm tắt `templates/manuscript/AGENTS.md`, mục 9–10)
 
 Rà soát trước khi gửi (mục 10):
 1. Đọc lại toàn văn bản định gửi, từng câu, như người chưa biết truyện; sau khi sửa, đọc lại cả đoạn quanh chỗ sửa.

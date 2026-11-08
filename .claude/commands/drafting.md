@@ -33,7 +33,7 @@ Tự kiểm lại lần cuối trước khi gửi: chạy `python3 .claude/novel
 
 ## 4. Mở đề xuất
 
-Viết `<dir>/body.md` theo mục 4 của `templates/manuscript/AGENTS.md` và mục 4 của `.claude/novel/canon-checklist.md`:
+Viết `<dir>/body.md` theo mục 4 và mục 10 của `templates/manuscript/AGENTS.md`:
 - Mục đích; danh sách chương (Ch số · tiêu đề · `id`) và số chữ.
 - Tóm tắt từng chương.
 - Đến chương cuối, outline của Act đã đi tới mục nào; chương thân mật nào đã có trong Act.
