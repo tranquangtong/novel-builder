@@ -157,7 +157,7 @@ export default function ConnectPage() {
           <div className="card card-pad grid" style={{ gap: 10 }}>
             <h2 style={{ margin: 0 }}>{conn?.mode === "github" ? "Đổi repo hoặc token" : "Kết nối repo bản thảo"}</h2>
             <label className="field">Repo bản thảo (private)
-              <input className="input mono" value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="tranquangtong/the-last-miracle-manuscript" data-testid="conn-repo" />
+              <input className="input mono" value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="owner/ten-repo-ban-thao" data-testid="conn-repo" />
             </label>
             <label className="field">Nhánh chính
               <input className="input mono" value={branch} onChange={(e) => setBranch(e.target.value)} />

@@ -84,11 +84,13 @@ Rồi **Re-run** workflow.
 
 ## 7. Dùng thử và chuyển bản thảo
 
+> "The Last Miracle" đã chuyển xong lên Cloudflare (tháng 11/2026); repo bản thảo GitHub cũ không còn dùng. Các bước dưới đây chỉ cần khi chuyển một bộ truyện khác từ GitHub sang.
+
 1. Mở `https://novel-builder.<subdomain>.workers.dev` → đăng nhập bằng email (nhập mã OTP).
 2. Trang mở thẳng vào **Bộ truyện** (menu trái, mục đầu tiên), ghi tên bạn kèm nhãn *biên tập*. Đây là nơi quản lý mọi bộ truyện: mở, tạo mới, đổi tên, xem số Act/chương/chữ.
 3. Trước khi chuyển: nhập các đề xuất còn mở trên GitHub vào bản chính, vì chỉ bản chính được chuyển.
 4. Khi chưa có bộ nào, khung **Chuyển một bộ truyện từ repo GitHub sang Cloudflare** tự mở:
-   - Repo: điền sẵn `tranquangtong/novel-thelastmiracle-manuscript`.
+   - Repo: điền tên repo bản thảo cần chuyển, dạng `owner/ten-repo` (điền sẵn nếu đặt biến `MANUSCRIPT_REPO`).
    - Token GitHub: chỉ cần quyền đọc; dùng một lần, không được lưu. (Token cũ đã dán ở github.io **không** dùng lại được vì trang Cloudflare là một địa chỉ khác.)
 5. Chuyển xong, trang tự mở bộ vừa chuyển → kiểm tra Thư viện, mở thử vài chương.
 

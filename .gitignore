@@ -17,3 +17,6 @@ coverage/
 .dev.vars
 .wrangler/
 pages-redirect/
+
+# Thư mục nháp của lệnh /drafting (agent novel-writer / novel-qc)
+.drafts/

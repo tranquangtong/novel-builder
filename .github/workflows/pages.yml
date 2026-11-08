@@ -41,7 +41,7 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-          NEXT_PUBLIC_MANUSCRIPT_REPO: ${{ vars.MANUSCRIPT_REPO || 'tranquangtong/novel-thelastmiracle-manuscript' }}
+          NEXT_PUBLIC_MANUSCRIPT_REPO: ${{ vars.MANUSCRIPT_REPO }}
       - name: E2E (bản tĩnh, chế độ demo + GitHub API giả)
         run: npx playwright test
         env:
@@ -67,7 +67,7 @@ jobs:
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN }}
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
-          NEXT_PUBLIC_MANUSCRIPT_REPO: ${{ vars.MANUSCRIPT_REPO || 'tranquangtong/novel-thelastmiracle-manuscript' }}
+          NEXT_PUBLIC_MANUSCRIPT_REPO: ${{ vars.MANUSCRIPT_REPO }}
       - name: E2E (Worker trên workerd + R2/D1 local)
         run: npx playwright test -c playwright.cloud.config.ts
       - uses: actions/upload-artifact@v7
