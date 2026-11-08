@@ -65,8 +65,15 @@ Văn phong (mục 9):
 
 ## 5. Tuyến tình cảm và mức độ
 
-- Mỗi Act (từ Act 2) có **3 chương thân mật** Dan × Zen theo bảng trong `IV. Act Runs`.
-- Mức độ: gợi cảm, có thể mô tả cơ thể và đụng chạm; **không mô tả quan hệ tình dục**. Chỉ giữa nhân vật **từ 18 tuổi trở lên**.
+- Mỗi Act (từ Act 2) có **3 chương thân mật** Dan × Zen theo bảng trong `IV. Act Runs`. Một chương chỉ được tính khi **tác giả đã duyệt** là đạt.
+- Mức độ: 16+, gợi cảm, mô tả cơ thể và đụng chạm; **không mô tả quan hệ tình dục**. Chỉ giữa nhân vật **từ 18 tuổi trở lên**, hai bên đồng thuận.
+- **Chuẩn của một chương thân mật** (fan yêu cầu, tác giả coi là trọng tâm). Mốc đã duyệt: **Ch 24**.
+  - Cảnh thân mật là **trọng tâm chương**: khoảng **1.500 chữ trở lên**, liền mạch qua 2–3 cảnh, có leo thang. Một đoạn ngắn hay một cái gục đầu vào vai là **không đạt**.
+  - Tả kỹ **sức hút cơ thể của cả hai**. Dan: vai, xương quai xanh, ngực, cơ bụng, da lạnh, răng nanh, ánh mắt. Zen: cổ, mạch đập, môi, đỏ mặt tới mang tai, phản ứng cơ thể khi bị chạm.
+  - Tả bằng giác quan: chạm, nhiệt độ (Dan lạnh, Zen ấm), hơi thở, mùi, tiếng động, khoảng cách.
+  - **Chemistry hai chiều.** Dan trêu, chủ động, chiếm hữu kiểu "mắng yêu". Zen ngượng muốn nổ tung ở ngoài nhưng **sướng rơn ở trong**, có độc thoại nội tâm; Zen cũng có lúc chủ động.
+  - Dừng trước quan hệ tình dục. Kết bằng một nhịp cảm xúc còn đọng lại.
+- **Act 2, theo nhận xét của tác giả:** Ch 29 (*Vai Của Dan*) **chưa đạt** chuẩn trên, không tính. Ch 34 và Ch 38 **tác giả chưa duyệt**. Trước khi hết Act 2 (Ch 53) phải có **thêm ít nhất 1 chương thân mật** đạt chuẩn. Nếu tác giả đánh giá Ch 34 hoặc Ch 38 chưa đạt thì cần thêm tương ứng.
 - Tỏ tình và nụ hôn đầu: **Act 5**. Trước đó Zen suýt nói nhưng không nói.
 - Mong ước của Akasha nằm trong phong ấn: phong ấn dịu đi khi Zen ở cạnh Dan bằng tình cảm thật, không chỉ nhờ máu. **Chưa giải thích trong truyện.**
 - Couple phụ: **Sali × Hideaki** (vers × vers, bắt đầu Act 4), **Garek × Cheryl**. Ba couple cùng happy ending ở Act 9.
