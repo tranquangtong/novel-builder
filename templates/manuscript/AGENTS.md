@@ -103,9 +103,13 @@ ghi vào file hay chat):
 Authorization: Bearer nbagent_…
 ```
 
-(Khi trang còn bật Cloudflare Access, dùng service token: `CF-Access-Client-Id` /
-`CF-Access-Client-Secret`.) Tài khoản Google của người đọc **không** dùng được các API dưới đây —
-người đọc chỉ có chế độ đọc.
+Tài khoản Google của người đọc **không** dùng được các API dưới đây: người đọc chỉ có chế độ
+đọc. Lỗi 401 nghĩa là thiếu token hoặc token sai; đừng thử cách đăng nhập khác, hãy báo tác giả.
+
+Trong repo `novel-builder`, Claude Code có sẵn script `.claude/novel/nb.py` (đọc, kéo chương,
+đếm chữ, mở đề xuất) và lệnh `/drafting` (agent `novel-writer` viết, agent `novel-qc` soát).
+API không cho đọc chính file `AGENTS.md` trên trang; bản tham chiếu là
+`templates/manuscript/AGENTS.md` trong repo `novel-builder`.
 
 Quy tắc ở các mục 2–7 vẫn giữ nguyên. Các thao tác dành cho agent:
 
@@ -117,6 +121,7 @@ Quy tắc ở các mục 2–7 vẫn giữ nguyên. Các thao tác dành cho age
 | Đọc file bất kỳ (canon, outline…) | `GET /api/novels/<id>/file?path=content/...` |
 | Liệt kê file trong một thư mục | `GET /api/novels/<id>/files?prefix=content/canon/` |
 | Lịch sử | `GET /api/novels/<id>/history` |
+| Danh sách đề xuất | `GET /api/novels/<id>/proposals` |
 | Ảnh của chương | `GET /api/novels/<id>/assets?chapter=<chapter_id>` |
 | **Mở đề xuất** | `POST /api/novels/<id>/agent/proposals` |
 | Bình luận vào đề xuất | `POST /api/novels/<id>/proposals/<n>/comment` `{"body": "..."}` |
