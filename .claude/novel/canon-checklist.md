@@ -13,7 +13,7 @@
 - Thấu Cảm của Zen cảm nhận **cảm xúc và nhịp ma lực**, không đọc suy nghĩ hay ký ức.
 - Năng lực đọc người của Sali: **"đọc sóng, không đọc chữ"**.
   - Sali chỉ biết người đối diện **đang sợ** hay **đang nói dối**, nhờ thấy sóng ma lực và đọc nét mặt. **Không** đọc được nội dung suy nghĩ, ý định hay ký ức.
-  - Phải nhìn thấy mặt, ở gần, phải tập trung; đọc lâu thì đau đầu.
+  - Phải nhìn thấy mặt, ở gần, phải tập trung; đọc lâu thì đau đầu. Ngoại lệ: quả cầu của lão Hask ở Đáy Sắt truyền được hình và sóng (Ch 17).
   - **Không đọc được** Vampire và người có kỷ luật tinh thần cao (Dan, Hideaki, Nessa).
   - **Không đọc người trong đội**; Sali trêu chỉ dựa trên quan sát.
   - Không lấn vai Thấu Cảm: Sali không cảm nhận cảm xúc qua nhịp ma lực.
@@ -30,7 +30,7 @@
 | Dan | 20 | Vampire thuần chủng | **hắn** | **tím lạnh** | **Không đeo găng tay.** Dây chuyền thánh giá bạc (khóa ký ức tuổi thơ, báo động phong ấn, quyền bảo trì). Nhớ mùi hoa ngọc lan nhưng không nhớ đã thấy ở đâu. |
 | Anki | ~20 | **Bán yêu, lai yêu quái sói** (ngoại hình gần như con người) | **cậu ta** | **đỏ** | Chưa lộ chủng tộc trong truyện; chỉ gợi ý (thính mũi, thính tai, lành xương nhanh). |
 | Puna | ~23 | Elf, cựu Paladin | **anh ta** | **vàng kim** | **Mắt trái mù** (sẹo ngang), mắt phải **hổ phách**; tai trái mất đầu nhọn. Vũ khí: **Kiếm Tro** + khiên tổ ong vàng kim. |
-| Sali | 18 | Nagareen, Mind Weaver | **cậu ta** | **gợn sóng xanh** | Tóc xanh biển thẫm, mắt **thạch anh tím**, bài bạc. Ở **Dãy A**, hay ngủ lại 404. Năng lực xem mục 1. **Không làm "bóng đèn"**: không chứng kiến hay giải nghĩa tình cảm Zen–Dan, không chen vào chương thân mật, tối đa 1 nhịp trêu couple mỗi Act. Gọi Zen là "Zen"/"cậu", **không** gọi "tiểu Supporter" (chỉ dùng ở Ch 10–12). |
+| Sali | 18 | Nagareen, Mind Weaver | **cậu ta** | **gợn sóng xanh** | Tóc xanh biển thẫm, mắt **thạch anh tím**, bài bạc. Ở **Dãy A**, hay ngủ lại 404. Năng lực xem mục 1. **Không làm "bóng đèn"**: không xác nhận hay giải nghĩa tình cảm Zen–Dan; từ Ch 13, tối đa 1 nhịp chứng kiến/trêu couple mỗi Act (Act 1: tấm màn Ch 24; Act 2: cái gật đầu Ch 38), ngoài nhịp đó không chen vào chương thân mật. Gọi Zen là "Zen"/"cậu", **không** gọi "tiểu Supporter" (chỉ dùng ở Ch 10–12). |
 | Bà Oda | già | Yêu quái tai cáo | bà | — | Sống ở Metropolis **sáu mươi năm**; tiệm thuốc dưới chân cầu cạn, Khu Phố Hạ; quen biết rộng; tiệm **chưa có tên**. |
 | Garek | — | Người Sói, Hạng B | gã | — | Đội 211; đội trưởng to mồm nhưng trọng tình nghĩa. |
 | Cheryl | — | Con người lai, Dealer (nỏ) | cô bé | — | Hội trưởng Hội Ái Mộ Dan; gọi Zen là "cố vấn", xưng **mình**. |
@@ -92,6 +92,6 @@ Văn phong (mục 9):
 - Nguồn mana của Zen từng nứt (Ch 38), liền một nửa; đang dưỡng.
 - Anki gãy tay trái ở Ch 37, đã tháo nẹp ở Ch 40.
 - Chiếc gương thứ hai đang bị Dan khóa trong ngăn kéo (Ch 40). Văn phòng Ngân Ưng ở phố Kính Bạc đã đóng cửa; Garek nghi có người báo trước, Dan cho là bị phát hiện vì đứng canh. Garek "sẽ để mắt".
-- Nessa: Zen thấy vài điều lạ (cửa *Nhân viên* ở Tháp A Ch 30, xin một tờ bùa báo động Ch 32, Zen nói dối là không còn, hỏi kỹ chỗ Zen nằm Ch 39) nhưng **chưa kể với ai**. Ch 33: Nessa đi cùng Cheryl ra phố Kính Bạc chọn đồng hồ.
+- Nessa: Zen thấy vài điều lạ (cửa *Nhân viên* ở Tháp A Ch 30, xin một tờ bùa báo động Ch 32, Zen nói dối là không còn, nhờ Cheryl hỏi kỹ chỗ Zen nằm Ch 39; Zen chỉ nhắn "tôi ổn") nhưng **chưa kể với ai**. Ch 33: Nessa đi cùng Cheryl ra phố Kính Bạc chọn đồng hồ.
 - Nụ ngọc lan trên bậu cửa sổ tầng dưới tiệm bà Oda đã **hé ba khe**, chưa nở.
 - Hai mươi sáu Supporter Lớp Hỗn Hợp D có bùa báo động của Zen.
