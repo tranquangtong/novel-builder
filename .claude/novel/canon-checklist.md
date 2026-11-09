@@ -30,7 +30,7 @@
 | Dan | 20 | Vampire thuần chủng | **hắn** | **tím lạnh** | **Không đeo găng tay.** Dây chuyền thánh giá bạc (khóa ký ức tuổi thơ, báo động phong ấn, quyền bảo trì). Nhớ mùi hoa ngọc lan nhưng không nhớ đã thấy ở đâu. |
 | Anki | ~20 | **Bán yêu, lai yêu quái sói** (ngoại hình gần như con người) | **cậu ta** | **đỏ** | Chưa lộ chủng tộc trong truyện; chỉ gợi ý (thính mũi, thính tai, lành xương nhanh). |
 | Puna | ~23 | Elf, cựu Paladin | **anh ta** | **vàng kim** | **Mắt trái mù** (sẹo ngang), mắt phải **hổ phách**; tai trái mất đầu nhọn. Vũ khí: **Kiếm Tro** + khiên tổ ong vàng kim. |
-| Sali | 18 | Nagareen, Mind Weaver | **cậu ta** | **gợn sóng xanh** | Tóc xanh biển thẫm, mắt **thạch anh tím**, bài bạc. Ở **Dãy A**, hay ngủ lại 404. Năng lực xem mục 1. **Không làm "bóng đèn"**: không xác nhận hay giải nghĩa tình cảm Zen–Dan; từ Ch 13, tối đa 1 nhịp chứng kiến/trêu couple mỗi Act (Act 1: tấm màn Ch 24; Act 2: cái gật đầu Ch 38), ngoài nhịp đó không chen vào chương thân mật. Gọi Zen là "Zen"/"cậu", **không** gọi "tiểu Supporter" (chỉ dùng ở Ch 10–12). |
+| Sali | 18 | Nagareen, Mind Weaver | **cậu ta** | **gợn sóng xanh** | Tóc xanh biển thẫm, mắt **thạch anh tím**, bài bạc. Ở **Dãy A**, hay ngủ lại 404. Năng lực xem mục 1. **Không làm "bóng đèn"**: không xác nhận hay giải nghĩa tình cảm Zen–Dan; từ Ch 13, tối đa 1 nhịp chứng kiến/trêu couple mỗi Act (Act 1: tấm màn Ch 24; Act 2: cái gật đầu Ch 38), ngoài nhịp đó không chen vào chương thân mật. Gọi Zen là "Zen"/"cậu". **Thỉnh thoảng** được gọi "tiểu Supporter" để chọc Zen (tối đa 1 lần/chương, không ở mọi chương; không lúc nghiêm túc/quan tâm, không trong cảnh Zen–Dan hay chương thân mật). |
 | Bà Oda | già | Yêu quái tai cáo | bà | — | Sống ở Metropolis **sáu mươi năm**; tiệm thuốc dưới chân cầu cạn, Khu Phố Hạ; quen biết rộng; tiệm **chưa có tên**. |
 | Garek | — | Người Sói, Hạng B | gã | — | Đội 211; đội trưởng to mồm nhưng trọng tình nghĩa. |
 | Cheryl | — | Con người lai, Dealer (nỏ) | cô bé | — | Hội trưởng Hội Ái Mộ Dan; gọi Zen là "cố vấn", xưng **mình**. |
@@ -45,7 +45,7 @@ Nhân vật phụ đã có: lão Hask (chủ sòng Đáy Sắt, Yêu quái), Mir
 - Anki gọi Zen **"nhóc"**, xưng **tôi**; gọi Puna **"ông già"**.
 - Puna xưng **tao/mày**, gọi Zen **"nhóc con"**; với bà Oda xưng **cháu**.
 - Sali xưng **tớ/cậu**.
-- Dan gọi Zen **"cậu"**, xưng **tôi**; **"tiểu Supporter"** 1–2 lần mỗi chương, ở khoảnh khắc trêu hoặc dịu dàng, **không** dùng ở cao trào nặng.
+- Dan gọi Zen **"cậu"**, xưng **tôi**; **"tiểu Supporter"** 1–2 lần mỗi chương, ở khoảnh khắc trêu hoặc dịu dàng, **không** dùng ở cao trào nặng. Sali đôi khi mượn tiếng gọi này để chọc Zen (xem bảng nhân vật).
 - Zen gọi **"anh Dan"**, **"anh Puna"**, gọi Anki là **"cậu"**, gọi Sali là **"cậu"**, xưng **tôi**.
 - Bà Oda gọi Zen **"cậu bé"**, gọi Dan **"thằng Vampire"**, xưng **ta**.
 
