@@ -19,7 +19,7 @@
   - Không lấn vai Thấu Cảm: Sali không cảm nhận cảm xúc qua nhịp ma lực.
 - Bài điều tức của Zen: **hít vào 4 nhịp, giữ 2 nhịp, thở ra 6 nhịp** (Dan dạy).
 - Vampire thuần chủng chịu được nắng nhưng **ma lực yếu đi dưới nắng gắt**.
-- Học viện: **ba học kỳ**. Hết học kỳ I lên Hạng D; bài cuối khóa học kỳ III mới cấp Hạng C Chính Thức. Tốt nghiệp gần cuối Act 4. Học viện có điều mờ ám (Tháp A, Gương Cổ).
+- Học viện: **ba học kỳ**. Học kỳ I ngắn, khoảng 2 tháng (Ch 8–25); học kỳ II và III mỗi kỳ khoảng **1 năm**, kể cả kỳ nghỉ. Học viện không phải trường chính thống, nên học kỳ không giống trường bình thường. Cuối Ch 40 mới khoảng tuần 8–10 của học kỳ II. Hết học kỳ I lên Hạng D; bài cuối khóa học kỳ III mới cấp Hạng C Chính Thức. Tốt nghiệp gần cuối Act 4. Học viện có điều mờ ám (Tháp A, Gương Cổ).
 - Supporter ở Học viện phải ký **sổ xám** (dấu con mắt) mỗi lần ra vào; ra ngoài sau giờ tắt đèn (10 giờ) phải có giấy phép giảng viên.
 
 ## 2. Nhân vật chính (tuổi, chủng tộc, cách gọi)
@@ -27,7 +27,7 @@
 | Nhân vật | Tuổi | Chủng tộc | Lời kể gọi | Nhịp ma lực | Ghi chú dễ sai |
 |---|---|---|---|---|---|
 | Zen | 18 | Con người, Supporter | **cậu** | (cảm nhận người khác) | Cá nhân vẫn Hạng F; tổ đội 404 Hạng D. Thích Dan từ lần đầu gặp (Ch 3), chưa dám nói. |
-| Dan | 20 | Vampire thuần chủng | **hắn** | **tím lạnh** | **Không đeo găng tay.** Dây chuyền thánh giá bạc (khóa ký ức tuổi thơ, báo động phong ấn, quyền bảo trì). Nhớ mùi hoa ngọc lan nhưng không nhớ đã thấy ở đâu. |
+| Dan | 20 | Vampire thuần chủng | **hắn** | **tím lạnh** | **Không đeo găng tay.** Dây chuyền thánh giá bạc (khóa **một phần** ký ức tuổi thơ, chủ yếu là ký ức kinh hoàng; Dan vẫn nhớ kỷ niệm với Koa và cái chết của Shun, báo động phong ấn, quyền bảo trì). Nhớ mùi hoa ngọc lan nhưng không nhớ đã thấy ở đâu. |
 | Anki | ~20 | **Bán yêu, lai yêu quái sói** (ngoại hình gần như con người) | **cậu ta** | **đỏ** | Chưa lộ chủng tộc trong truyện; chỉ gợi ý (thính mũi, thính tai, lành xương nhanh). |
 | Puna | ~23 | Elf, cựu Paladin | **anh ta** | **vàng kim** | **Mắt trái mù** (sẹo ngang), mắt phải **hổ phách**; tai trái mất đầu nhọn. Vũ khí: **Kiếm Tro** + khiên tổ ong vàng kim. |
 | Sali | 18 | Nagareen, Mind Weaver | **cậu ta** | **gợn sóng xanh** | Tóc xanh biển thẫm, mắt **thạch anh tím**, bài bạc. Ở **Dãy A**, hay ngủ lại 404. Năng lực xem mục 1. **Không làm "bóng đèn"**: không xác nhận hay giải nghĩa tình cảm Zen–Dan; từ Ch 13, tối đa 1 nhịp chứng kiến/trêu couple mỗi Act (Act 1: tấm màn Ch 24; Act 2: cái gật đầu Ch 38), ngoài nhịp đó không chen vào chương thân mật. Gọi Zen là "Zen"/"cậu". **Thỉnh thoảng** được gọi "tiểu Supporter" để chọc Zen (tối đa 1 lần/chương, không ở mọi chương; không lúc nghiêm túc/quan tâm, không trong cảnh Zen–Dan hay chương thân mật). |
@@ -37,6 +37,9 @@
 | Nessa | — | Con người | cô ta | đều đến mức lạ | Bạn thân Cheryl, phó hội. **Gián điệp của Yawa, lộ ở Act 6.** Trước đó chỉ cài cắm: Zen để ý chi tiết nhỏ rồi tự gạt đi, **không kể với ai**; không ai nghi Nessa thành lời. Sali không đọc được Nessa (sóng phẳng), tưởng là kỷ luật. |
 | Hideaki | ~24 | Vampire | — | — | Anh thứ hai của Dan; xuất hiện Act 4. |
 | Wong Fei Hong | ~27 | Vampire | — | — | Anh cả của Dan. |
+| Koa | ~15 khi xuất hiện | Vampire, dòng chính tộc Ageha, con của **Yawa** | **thằng nhóc / nhóc Koa** (không dùng "cậu") | — | Em cùng cha khác mẹ của Dan. **Chưa xuất hiện**; không sớm hơn Ch 41, sau bước nhảy thời gian khoảng 4 tháng. Giả Hạng D để vào đúng lớp của Dan. **Chưa thành niên: không có tuyến tình cảm.** Chưa viết cảnh Zen bổ trợ Koa trước khi tác giả chốt cơ chế (luật 4 liên kết). Không tiết lộ bí mật gia tộc trước Act 5. Chi tiết ở ghi chú Act 0. |
+
+Đã mất, chưa xuất hiện: **Shun** (Hồ ly tinh, bạn thân như anh em của Dan, chết khi đỡ đạn cho Dan lúc trốn khỏi dinh thự; xem ghi chú Act 0). "Phu nhân" ở Ch 31 là **Yawa** (chưa nói ra trong truyện).
 
 Nhân vật phụ đã có: lão Hask (chủ sòng Đáy Sắt, Yêu quái), Mira (Supporter Đội 211, mất tích), giảng viên Corvin (Nagareen), bác sĩ Halvard (Elf, Tháp A), Selene (Ngân Ưng), Rina (Supporter, mất tích), ông Tobi (Supporter già, mất tích), lão Ferren (thầy thuốc Elf), Brann (Đội Tuần tra), Teo (Supporter), Ilse (Supporter cũ của Corvin, mất tích 20 năm trước), ông Bertram (quầy cho vay số 7).
 
