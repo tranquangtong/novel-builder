@@ -4,13 +4,19 @@
 > **Nguồn sự thật** là: (1) hai ghi chú Act 0 trên trang (`I -> III. Outline`, `IV. Act Runs`),
 > (2) nguyên văn các chương, (3) `templates/manuscript/AGENTS.md` (quy tắc agent). Khi bảng này khác Act 0 hoặc nguyên văn,
 > **Act 0 và nguyên văn thắng**. Nếu phát hiện bảng này lỗi thời, ghi rõ trong báo cáo để cập nhật.
-> Cập nhật lần cuối: sau Ch 40.
+> Cập nhật lần cuối: sau Ch 40 (kèm đợt sửa thiết lập Sali và Nessa).
 
 ## 1. Luật thế giới (không bao giờ được phá)
 
 - **Chỉ con người mới có thiên phú Supporter.** Không có Supporter Elf, Nagareen, Yêu quái, Vampire, Người Sói, bán yêu. Nhân vật không phải con người đứng cạnh Supporter (bác sĩ, giảng viên, Dealer…) thì không được gọi là Supporter.
 - 1 Supporter bổ trợ tối đa **4 Dealer** (4 liên kết sâu). Nối liên kết thứ 5 là vượt giới hạn, gây tổn thương nặng (Ch 23).
 - Thấu Cảm của Zen cảm nhận **cảm xúc và nhịp ma lực**, không đọc suy nghĩ hay ký ức.
+- Năng lực đọc người của Sali: **"đọc sóng, không đọc chữ"**.
+  - Sali chỉ biết người đối diện **đang sợ** hay **đang nói dối**, nhờ thấy sóng ma lực và đọc nét mặt. **Không** đọc được nội dung suy nghĩ, ý định hay ký ức.
+  - Phải nhìn thấy mặt, ở gần, phải tập trung; đọc lâu thì đau đầu.
+  - **Không đọc được** Vampire và người có kỷ luật tinh thần cao (Dan, Hideaki, Nessa).
+  - **Không đọc người trong đội**; Sali trêu chỉ dựa trên quan sát.
+  - Không lấn vai Thấu Cảm: Sali không cảm nhận cảm xúc qua nhịp ma lực.
 - Bài điều tức của Zen: **hít vào 4 nhịp, giữ 2 nhịp, thở ra 6 nhịp** (Dan dạy).
 - Vampire thuần chủng chịu được nắng nhưng **ma lực yếu đi dưới nắng gắt**.
 - Học viện: **ba học kỳ**. Hết học kỳ I lên Hạng D; bài cuối khóa học kỳ III mới cấp Hạng C Chính Thức. Tốt nghiệp gần cuối Act 4. Học viện có điều mờ ám (Tháp A, Gương Cổ).
@@ -24,11 +30,11 @@
 | Dan | 20 | Vampire thuần chủng | **hắn** | **tím lạnh** | **Không đeo găng tay.** Dây chuyền thánh giá bạc (khóa ký ức tuổi thơ, báo động phong ấn, quyền bảo trì). Nhớ mùi hoa ngọc lan nhưng không nhớ đã thấy ở đâu. |
 | Anki | ~20 | **Bán yêu, lai yêu quái sói** (ngoại hình gần như con người) | **cậu ta** | **đỏ** | Chưa lộ chủng tộc trong truyện; chỉ gợi ý (thính mũi, thính tai, lành xương nhanh). |
 | Puna | ~23 | Elf, cựu Paladin | **anh ta** | **vàng kim** | **Mắt trái mù** (sẹo ngang), mắt phải **hổ phách**; tai trái mất đầu nhọn. Vũ khí: **Kiếm Tro** + khiên tổ ong vàng kim. |
-| Sali | 18 | Nagareen, Mind Weaver | **cậu ta** | **gợn sóng xanh** | Tóc xanh biển thẫm, mắt **thạch anh tím**, bài bạc. Ở **Dãy A**, hay ngủ lại 404. |
+| Sali | 18 | Nagareen, Mind Weaver | **cậu ta** | **gợn sóng xanh** | Tóc xanh biển thẫm, mắt **thạch anh tím**, bài bạc. Ở **Dãy A**, hay ngủ lại 404. Năng lực xem mục 1. **Không làm "bóng đèn"**: không chứng kiến hay giải nghĩa tình cảm Zen–Dan, không chen vào chương thân mật, tối đa 1 nhịp trêu couple mỗi Act. Gọi Zen là "Zen"/"cậu", **không** gọi "tiểu Supporter" (chỉ dùng ở Ch 10–12). |
 | Bà Oda | già | Yêu quái tai cáo | bà | — | Sống ở Metropolis **sáu mươi năm**; tiệm thuốc dưới chân cầu cạn, Khu Phố Hạ; quen biết rộng; tiệm **chưa có tên**. |
 | Garek | — | Người Sói, Hạng B | gã | — | Đội 211; đội trưởng to mồm nhưng trọng tình nghĩa. |
 | Cheryl | — | Con người lai, Dealer (nỏ) | cô bé | — | Hội trưởng Hội Ái Mộ Dan; gọi Zen là "cố vấn", xưng **mình**. |
-| Nessa | — | Con người | cô ta | đều đến mức lạ | Bạn thân Cheryl, phó hội. **Gián điệp của Yawa, lộ ở Act 6** — trước đó chỉ cài cắm, không lộ. |
+| Nessa | — | Con người | cô ta | đều đến mức lạ | Bạn thân Cheryl, phó hội. **Gián điệp của Yawa, lộ ở Act 6.** Trước đó chỉ cài cắm: Zen để ý chi tiết nhỏ rồi tự gạt đi, **không kể với ai**; không ai nghi Nessa thành lời. Sali không đọc được Nessa (sóng phẳng), tưởng là kỷ luật. |
 | Hideaki | ~24 | Vampire | — | — | Anh thứ hai của Dan; xuất hiện Act 4. |
 | Wong Fei Hong | ~27 | Vampire | — | — | Anh cả của Dan. |
 
@@ -85,6 +91,7 @@ Văn phong (mục 9):
 - Luật của đội: điều một đến ba (Ch 15) và **điều bốn: ai mệt thì nói, ai biết người khác mệt cũng nói** (Ch 39).
 - Nguồn mana của Zen từng nứt (Ch 38), liền một nửa; đang dưỡng.
 - Anki gãy tay trái ở Ch 37, đã tháo nẹp ở Ch 40.
-- Chiếc gương thứ hai đang bị Dan khóa trong ngăn kéo (Ch 40). Văn phòng Ngân Ưng ở phố Kính Bạc đã đóng cửa.
+- Chiếc gương thứ hai đang bị Dan khóa trong ngăn kéo (Ch 40). Văn phòng Ngân Ưng ở phố Kính Bạc đã đóng cửa; Garek nghi có người báo trước, Dan cho là bị phát hiện vì đứng canh. Garek "sẽ để mắt".
+- Nessa: Zen thấy vài điều lạ (cửa *Nhân viên* ở Tháp A Ch 30, xin một tờ bùa báo động Ch 32, Zen nói dối là không còn, hỏi kỹ chỗ Zen nằm Ch 39) nhưng **chưa kể với ai**. Ch 33: Nessa đi cùng Cheryl ra phố Kính Bạc chọn đồng hồ.
 - Nụ ngọc lan trên bậu cửa sổ tầng dưới tiệm bà Oda đã **hé ba khe**, chưa nở.
 - Hai mươi sáu Supporter Lớp Hỗn Hợp D có bùa báo động của Zen.
