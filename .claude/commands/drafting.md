@@ -22,12 +22,17 @@ Gọi agent `novel-writer` (chạy foreground, chờ kết quả). Đưa cho nó
 - Nếu lô chương chứa chương thân mật nào của Act (xem bảng trong `IV. Act Runs`, các chương thân mật đã viết của Act đó, và mục 5 của bảng kiểm: chương nào tác giả đã duyệt, chương nào chưa đạt), ghi rõ chương nào và nhắc chuẩn trong bảng kiểm mục 5.
 - Nhắc: lô lớn hơn 4 chương thì viết và tự kiểm từng chương một, không viết dồn.
 
-## 3. QC
+## 3. QC: đúng 2 vòng
 
-Gọi agent `novel-qc` với `<dir>` và danh sách file trong `<dir>/drafts/`. Chờ báo cáo.
+Theo quy trình chung trong `CLAUDE.md`, mục "Quy trình QC nội dung truyện": **QC vòng 1 → sửa → QC vòng 2 → sửa → báo cáo**. Không có QC vòng 3.
 
-- **CHƯA ĐẠT**: tiếp tục agent `novel-writer` (dùng SendMessage tới agent vừa chạy nếu có, nếu không thì gọi mới và đưa kèm `<dir>`) với **nguyên văn** báo cáo QC, yêu cầu sửa. Rồi gọi lại `novel-qc` trên bản đã sửa. Tối đa 3 vòng. Sau 3 vòng vẫn còn mục Chặn: **không** mở đề xuất; báo tác giả các mục còn tồn đọng.
-- **ĐẠT**: sang bước 4.
+1. **QC vòng 1.** Gọi agent `novel-qc` với `<dir>`, danh sách file trong `<dir>/drafts/`, và ghi rõ "vòng 1/2". Chờ báo cáo.
+2. **Sửa lần 1.** Gửi **nguyên văn** báo cáo cho `novel-writer`, yêu cầu sửa. Dùng SendMessage tới agent vừa chạy nếu được; nếu không, gọi agent mới và đưa kèm `<dir>`.
+3. **QC vòng 2, vòng cuối.** Gọi lại `novel-qc` với ghi chú "vòng 2/2". Kèm danh sách mục vòng 1 cần kiểm, để agent xác nhận các mục đó đã sửa và tìm lỗi mới do việc sửa gây ra.
+4. **Sửa lần 2.** Gửi nguyên văn báo cáo vòng 2 cho `novel-writer`. Không gọi QC lần nữa. Người điều phối tự kiểm từng chỗ đã sửa: đọc đoạn quanh chỗ sửa, chạy `wc` và grep.
+5. Sau lần sửa 2, nếu một mục **Chặn** không sửa được, hoặc cách sửa cần tác giả quyết: **không** mở đề xuất. Báo tác giả các mục còn tồn đọng.
+
+Nếu vòng 1 đã ĐẠT và không còn mục Nhẹ nào đáng sửa, bỏ qua các bước 2–4 ở trên và sang thẳng mục 4 (Mở đề xuất).
 
 Tự kiểm lại lần cuối trước khi gửi: chạy `python3 .claude/novel/nb.py wc <dir>/drafts/*.md` và `grep -n -i -E 'supporter (elf|nagareen|yêu quái|vampire|người sói)' <dir>/drafts/*.md` (phải không ra gì).
 
@@ -38,7 +43,7 @@ Viết `<dir>/body.md` theo mục 4 và mục 10 của `templates/manuscript/AGE
 - Tóm tắt từng chương.
 - Đến chương cuối, outline của Act đã đi tới mục nào; chương thân mật nào đã có trong Act.
 - Chi tiết canon mới cần tác giả duyệt (lấy từ báo cáo writer và QC).
-- Kết quả QC: số vòng, các lỗi đáng chú ý đã sửa.
+- Kết quả QC: 2 vòng; các lỗi đáng chú ý đã sửa; những chỗ sửa sau vòng 2 không được QC lại, chỉ người điều phối tự kiểm.
 - Các chương/ghi chú đã đọc.
 
 Rồi chạy:

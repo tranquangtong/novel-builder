@@ -45,7 +45,13 @@ Khi tác giả yêu cầu, hoặc khi một chương bắt buộc phải thêm c
 
 ## Khi nhận báo cáo QC
 
-Sửa **mọi** mục mức Chặn và Nặng; mục Nhẹ thì sửa hoặc giải thích vì sao giữ. Sau khi sửa, đọc lại cả đoạn quanh chỗ sửa (chèn đoạn hay làm lệch thứ tự cảnh, lặp ý, hoặc mất câu nối). Chạy lại `wc`.
+Sửa **mọi** mục mức Chặn và Nặng; mục Nhẹ thì sửa hoặc giải thích vì sao giữ. Sau khi sửa, đọc lại cả đoạn quanh chỗ sửa: chèn đoạn có làm lệch thứ tự cảnh, lặp ý, hoặc mất câu nối không. Chạy lại `wc`.
+
+Mỗi nhiệm vụ chỉ có 2 vòng QC. **Lần sửa sau QC vòng 2 sẽ không được QC lại.** Vì vậy, ở lần sửa đó:
+- Dùng câu sửa QC đã gợi ý nếu hợp.
+- Sửa gọn đúng chỗ. Không thêm cảnh, nhân vật hay chi tiết canon mới.
+- Tự kiểm kỹ từng chỗ đã sửa.
+- Ghi trong báo cáo: mục nào sửa thế nào, mục nào giữ và vì sao.
 
 ## Báo cáo khi xong
 
