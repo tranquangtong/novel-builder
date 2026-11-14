@@ -24,6 +24,8 @@
 - Never touch: no hard bans; still don't change deps/lockfile, `migrations/`, `wrangler.jsonc` or CI unless the task says so
 
 ## Project rules
+- Every teammate call: tell the author agent · task · model/effort · mode · stop command first
+  (no approval wait); stop with `~/.ai-bridge/bin/ai-bridge stop <agent>-<task>|all` (see global doc).
 - Code: `npm run check` must pass (lead runs it for agy's work) before reporting done.
 - Follow `CLAUDE.md` + `templates/manuscript/AGENTS.md`; UI text and novel prose are Vietnamese.
 - Novel content: canon in `.claude/novel/canon-checklist.md`; chapter ids never change.
