@@ -1,0 +1,5 @@
+# Ảnh tham chiếu của từng truyện: lưu bằng Git LFS để repo không phình to
+stories/**/*.png filter=lfs diff=lfs merge=lfs -text
+stories/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+stories/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+stories/**/*.webp filter=lfs diff=lfs merge=lfs -text
