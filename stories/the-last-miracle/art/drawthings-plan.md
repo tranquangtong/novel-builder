@@ -87,6 +87,19 @@ Giữ quy trình 2 vòng QC như khi viết truyện. Bảng kiểm cho mỗi �
 
 Lỗi nhỏ thì inpaint, không gen lại cả ảnh. Chỉ ảnh tác giả duyệt mới chuyển sang `characters/` hoặc `scenes/` (xem `README.md`).
 
+## Đã kiểm thực tế (2026-11-17/18, MacBook M1 Pro 16 GB)
+
+- API Server HTTP chạy ở `127.0.0.1:7860`, endpoint `/sdapi/v1/txt2img` trả ảnh base64. Cấu hình hiện tại của app đọc ở `/sdapi/v1/options` (trường `model` = tên file model đang chọn).
+- API Server **không tự bật lại** khi app khởi động lại; phải bật tay.
+- Đổi model ngay trong payload bằng `"model": "<tên file>"`, không cần chạm app. Tên file:
+  - SDXL Base: `sd_xl_base_1.0_f16.ckpt` (gốc để train LoRA)
+  - Tả thực: `juggernaut_xl_ragnarok_q6p_q8p.ckpt`
+  - Manhwa: `animagine_xl_v3.1_f16.ckpt` (prompt dạng tag, `clip_skip` 2)
+- Key lạ ở cấp ngoài cùng bị từ chối (HTTP 422). **IP-Adapter Face không nhận ảnh mẫu qua HTTP**: gửi ảnh hay không, kết quả như nhau. Muốn giữ mặt qua API thì dùng LoRA.
+- Tốc độ: khoảng 115 giây/ảnh 832×1216, 28–30 bước.
+- Prompt phải ghi rõ `East Asian`; không ghi thì model ra mặt người phương Tây.
+- Script gọi API: `tools/dt_gen.py`. Bộ ảnh train: `lora-dataset/` (xem `lora-dataset/REVIEW.md`).
+
 ## Câu mở đầu khi bắt đầu trên Mac
 
 > Đọc `stories/the-last-miracle/art/drawthings-plan.md`. Draw Things đã chạy trên Mac, API ở `<địa chỉ:port>`, model `<tên>`, LoRA `<dan>` và `<zen>`. Gen lại 3 cảnh thử theo bước 5, rồi QC theo bước 6.
