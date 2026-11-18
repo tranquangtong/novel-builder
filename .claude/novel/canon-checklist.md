@@ -4,7 +4,7 @@
 > **Nguồn sự thật** là: (1) hai ghi chú Act 0 trên trang (`I -> III. Outline`, `IV. Act Runs`),
 > (2) nguyên văn các chương, (3) `templates/manuscript/AGENTS.md` (quy tắc agent). Khi bảng này khác Act 0 hoặc nguyên văn,
 > **Act 0 và nguyên văn thắng**. Nếu phát hiện bảng này lỗi thời, ghi rõ trong báo cáo để cập nhật.
-> Cập nhật lần cuối: sau Ch 40 (kèm đợt sửa thiết lập Sali và Nessa).
+> Cập nhật lần cuối: sau Ch 40 (kèm đợt sửa thiết lập Sali và Nessa; thêm ngoại hình Fei Hong, Hideaki, Koa theo character sheet; chốt màu ma lực Sali là xanh ngọc bích; sẹo mắt Puna là sẹo dọc).
 
 ## 1. Luật thế giới (không bao giờ được phá)
 
@@ -29,8 +29,8 @@
 | Zen | 18 | Con người, Supporter | **cậu** | (cảm nhận người khác) | Cá nhân vẫn Hạng F; tổ đội 404 Hạng D. Thích Dan từ lần đầu gặp (Ch 3), chưa dám nói. |
 | Dan | 20 | Vampire thuần chủng | **hắn** | **tím lạnh** | **Không đeo găng tay.** Dây chuyền thánh giá bạc (khóa **một phần** ký ức tuổi thơ, chủ yếu là ký ức kinh hoàng; Dan vẫn nhớ kỷ niệm với Koa và cái chết của Shun, báo động phong ấn, quyền bảo trì). Nhớ mùi hoa ngọc lan nhưng không nhớ đã thấy ở đâu. |
 | Anki | ~20 | **Bán yêu, lai yêu quái sói** (ngoại hình gần như con người) | **cậu ta** | **đỏ** | Chưa lộ chủng tộc trong truyện; chỉ gợi ý (thính mũi, thính tai, lành xương nhanh). |
-| Puna | ~23 | Elf, cựu Paladin | **anh ta** | **vàng kim** | **Mắt trái mù** (sẹo ngang), mắt phải **hổ phách**; tai trái mất đầu nhọn. Vũ khí: **Kiếm Tro** + khiên tổ ong vàng kim. |
-| Sali | 18 | Nagareen, Mind Weaver | **cậu ta** | **gợn sóng xanh** | Tóc xanh biển thẫm, mắt **thạch anh tím**, bài bạc. Ở **Dãy A**, hay ngủ lại 404. Năng lực xem mục 1. **Không làm "bóng đèn"**: không xác nhận hay giải nghĩa tình cảm Zen–Dan; từ Ch 13, tối đa 1 nhịp chứng kiến/trêu couple mỗi Act (Act 1: tấm màn Ch 24; Act 2: cái gật đầu Ch 38), ngoài nhịp đó không chen vào chương thân mật. Gọi Zen là "Zen"/"cậu". **Thỉnh thoảng** được gọi "tiểu Supporter" để chọc Zen (tối đa 1 lần/chương, không ở mọi chương; không lúc nghiêm túc/quan tâm, không trong cảnh Zen–Dan hay chương thân mật). |
+| Puna | ~23 | Elf, cựu Paladin | **anh ta** | **vàng kim** | **Mắt trái mù** (tròng mắt nhạt màu, đục; một vết sẹo **dọc** từ trên chân mày trái, cắt qua mí mắt, xuống gò má), mắt phải **hổ phách**; tai trái mất đầu nhọn. Vũ khí: **Kiếm Tro** + khiên tổ ong vàng kim. |
+| Sali | 18 | Nagareen, Mind Weaver | **cậu ta** | **gợn sóng xanh ngọc bích** (sắc ngọc jade nhạt, hơi trong suốt, không rực, không đặc; xanh lục ngả lam như nước biển trong vắt ở chỗ nông; không phải xanh lam, không cùng màu tóc xanh biển thẫm) | Tóc xanh biển thẫm, mắt **thạch anh tím**, bài bạc. Ở **Dãy A**, hay ngủ lại 404. Năng lực xem mục 1. **Không làm "bóng đèn"**: không xác nhận hay giải nghĩa tình cảm Zen–Dan; từ Ch 13, tối đa 1 nhịp chứng kiến/trêu couple mỗi Act (Act 1: tấm màn Ch 24; Act 2: cái gật đầu Ch 38), ngoài nhịp đó không chen vào chương thân mật. Gọi Zen là "Zen"/"cậu". **Thỉnh thoảng** được gọi "tiểu Supporter" để chọc Zen (tối đa 1 lần/chương, không ở mọi chương; không lúc nghiêm túc/quan tâm, không trong cảnh Zen–Dan hay chương thân mật). |
 | Bà Oda | già | Yêu quái tai cáo | bà | — | Sống ở Metropolis **sáu mươi năm**; tiệm thuốc dưới chân cầu cạn, Khu Phố Hạ; quen biết rộng; tiệm **chưa có tên**. |
 | Garek | — | Người Sói, Hạng B | gã | — | Đội 211; đội trưởng to mồm nhưng trọng tình nghĩa. |
 | Cheryl | — | Con người lai, Dealer (nỏ) | cô bé | — | Hội trưởng Hội Ái Mộ Dan; gọi Zen là "cố vấn", xưng **mình**. |
@@ -42,6 +42,15 @@
 Đã mất, chưa xuất hiện: **Shun** (Hồ ly tinh, bạn thân như anh em của Dan, chết khi đỡ đạn cho Dan lúc trốn khỏi dinh thự; xem ghi chú Act 0). "Phu nhân" ở Ch 31 là **Yawa** (chưa nói ra trong truyện).
 
 Nhân vật phụ đã có: lão Hask (chủ sòng Đáy Sắt, Yêu quái), Mira (Supporter Đội 211, mất tích), giảng viên Corvin (Nagareen), bác sĩ Halvard (Elf, Tháp A), Selene (Ngân Ưng), Rina (Supporter, mất tích), ông Tobi (Supporter già, mất tích), lão Ferren (thầy thuốc Elf), Brann (Đội Tuần tra), Teo (Supporter), Ilse (Supporter cũ của Corvin, mất tích 20 năm trước), ông Bertram (quầy cho vay số 7).
+
+### Ngoại hình ba anh em của Dan (theo character sheet tác giả đã duyệt)
+
+Sheet gốc: `stories/the-last-miracle/art/characters/` (`char fei hong.png`, `char hideaki.png`, `char koa.png`). Khi tả ngoại hình trong chương, bám theo mục này và sheet. Nếu sheet khác Act 0 hoặc nguyên văn chương, Act 0 và nguyên văn thắng; ghi lại để tác giả quyết.
+
+- **Chung:** cả ba, như Dan, là Vampire xuất thân quý tộc. Quan hệ gia tộc theo bảng trên và ghi chú Act 0 (Koa thuộc tộc Ageha qua mẹ là Yawa). Quần áo sang trọng, thanh lịch hơn người thường nhiều (vải tốt, cắt may kỹ, thêu chìm, màu trầm) nhưng **không lòe loẹt**.
+- **Wong Fei Hong:** xuất thân vương quốc **Aremo** (lấy ý tưởng từ Trung Hoa xưa; đây chỉ là tham chiếu thiết kế, trong truyện không nhắc Trung Hoa, nhà Thanh hay Hoàng Phi Hồng). Cao khoảng 188 cm, vai rộng, dáng người luyện võ. Tóc đen dài **tết một bím** sau lưng. **Đeo kính** gọng mảnh. Nét mặt tươi, hay cười, nhưng ánh mắt sắc sảo. Trang phục kiểu võ sư Aremo: trường sam lụa xanh ngọc trầm, vạt thêu chìm hoa văn rồng; áo khoác ngắn gấm than chì, cổ đứng, khuy thắt nút, cổ và tay áo thêu chìm hoa văn mây; viền cổ vải ngà; đeo ngọc tròn có tua ở thắt lưng; quần ống rộng màu nâu sẫm, giày vải.
+- **Hideaki:** cao khoảng 183 cm, thân hình rắn rỏi, cơ bắp săn chắc theo kiểu luyện tập quân đội. Tóc đen **cắt ngắn, hớt cao**. Dáng vẻ trẻ trung, năng động. Nét mặt tươi, hay cười rạng rỡ. Vẻ rạng rỡ này để tạo tương phản với những lần Hideaki khóc khi làm nhiệm vụ; khóc không có nghĩa là mất kỷ luật tinh thần (Sali vẫn không đọc được Hideaki, mục 1). Trang phục: áo ba lỗ xanh đen vải cao cấp, quần âu than chì, bốt da nâu sẫm; **dây thẻ bài bạc chạm khắc** kiểu quân đội; thắt lưng da có **khóa khắc gia huy**.
+- **Koa:** cao khoảng 165 cm, dáng thiếu niên mảnh mai. Tóc **nâu tự nhiên** (để phân biệt với tóc đen của Zen), mắt tím nhạt. Áo ngắn tay cổ đứng màu tím trầm, có ghim hình con dơi; quần dài thoải mái vải than chì, giày da nâu mềm. Luôn có **một con dơi béo tròn** (lông xám đen, cánh hồng nâu) đi theo: vừa là bạn đồng hành, vừa là vũ khí, **biến thành bất kỳ vũ khí nào Koa muốn** (sheet minh họa dạng kiếm và dạng cung). Cách dùng con dơi trong chiến đấu chưa chốt. Không cho con dơi xuất hiện trước Koa, và không viết cảnh nó biến thành vũ khí trước khi tác giả chốt cơ chế.
 
 ## 3. Xưng hô trong thoại (AGENTS.md mục 9)
 
