@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, cloudFetch, fmtDate } from "@/lib/client/api";
 import { useConnection } from "@/lib/client/connection";
@@ -28,8 +28,9 @@ export default function GalleryPage() {
   const canEdit = cloudMe.data?.role === "editor";
 
   const project = useProject(!!novelId);
+  const assetsKey = ["assets", novelId, "all"];
   const assetsQuery = useQuery({
-    queryKey: ["assets", novelId, "all"],
+    queryKey: assetsKey,
     enabled: !!novelId,
     queryFn: () => cloudFetch<{ assets: Asset[] }>(`/api/novels/${novelId}/assets`),
   });
@@ -38,6 +39,7 @@ export default function GalleryPage() {
   const [chapterFilter, setChapterFilter] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
+  const galleryRef = useRef<HTMLDivElement>(null);
 
   const chapters = useMemo(() => project.data?.chapters ?? [], [project.data?.chapters]);
   const sortedAssets = useMemo(() => sortAssetsNewestFirst(assetsQuery.data?.assets ?? []), [assetsQuery.data?.assets]);
@@ -53,6 +55,13 @@ export default function GalleryPage() {
   const activeIndex = selectedKey ? filtered.findIndex((a) => a.key === selectedKey) : -1;
   const active = activeIndex >= 0 ? filtered[activeIndex] : null;
   const closeLightbox = useCallback(() => setSelectedKey(null), []);
+  const fallbackFocus = useCallback(() => {
+    const gallery = galleryRef.current;
+    return gallery?.querySelector<HTMLElement>(".gallery-thumb-btn")
+      ?? gallery?.querySelector<HTMLElement>(".gallery-chapter-select")
+      ?? gallery?.querySelector<HTMLElement>("h1")
+      ?? null;
+  }, []);
 
   useEffect(() => {
     if (activeIndex < 0 || filtered.length < 2) return;
@@ -75,6 +84,10 @@ export default function GalleryPage() {
     setDeletingKey(a.key);
     try {
       await trashNovelAsset(novelId, a.key);
+      await qc.cancelQueries({ queryKey: assetsKey, exact: true });
+      qc.setQueryData<{ assets: Asset[] }>(assetsKey, (data) =>
+        data && { ...data, assets: data.assets.filter((asset) => asset.key !== a.key) },
+      );
       setSelectedKey((key) => key === a.key ? null : key);
       toast("Đã chuyển ảnh vào thùng rác.");
       await qc.invalidateQueries({ queryKey: ["assets", novelId] });
@@ -120,10 +133,10 @@ export default function GalleryPage() {
 
   return (
     <div className="page">
-      <div className="page-inner">
+      <div className="page-inner" ref={galleryRef}>
         <div className="page-head">
           <div>
-            <h1>Thư viện ảnh</h1>
+            <h1 tabIndex={-1}>Thư viện ảnh</h1>
             <div className="sub">
               {assetsQuery.data
                 ? `${sortedAssets.length} ảnh đã tải lên cho bộ truyện này (mới nhất trước).`
@@ -269,6 +282,7 @@ export default function GalleryPage() {
         <Modal
           title={active.caption || active.fileName}
           onClose={closeLightbox}
+          fallbackFocus={fallbackFocus}
           testId="gallery-lightbox"
           footer={
             <>
