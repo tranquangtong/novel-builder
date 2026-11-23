@@ -23,6 +23,14 @@ test.describe("Truy cập", () => {
     const blocked = await page.evaluate(() => fetch("https://example.com/").then(() => "ok", () => "blocked"));
     expect(blocked).toBe("blocked");
   });
+
+  test("thư viện ảnh chỉ khả dụng trong chế độ Cloudflare", async ({ page }) => {
+    await useDemo(page);
+    await go(page, "/gallery/");
+    await expect(page.getByRole("heading", { name: "Thư viện ảnh" })).toBeVisible();
+    await expect(page.getByText("Cần chế độ Cloudflare")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Thư viện ảnh" })).toHaveCount(0);
+  });
 });
 
 test.describe("Viết, nháp và lưu phiên bản", () => {

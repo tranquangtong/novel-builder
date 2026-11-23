@@ -6,7 +6,6 @@ import {
   countByKind,
   filterAssets,
   formatAssetSize,
-  isChapterScope,
   resolveScopeLabel,
   sortAssetsNewestFirst,
   type GalleryAsset,
@@ -50,11 +49,7 @@ describe("gallery helpers", () => {
     expect(input.map((x) => x.key)).toEqual([a.key, b.key, c.key]);
   });
 
-  it("resolveScopeLabel và isChapterScope xử lý Ảnh chung, chương, ghi chú và scope lạ", () => {
-    expect(isChapterScope(COMMON_SCOPE)).toBe(false);
-    expect(isChapterScope("ch_001")).toBe(true);
-    expect(isChapterScope("")).toBe(false);
-
+  it("resolveScopeLabel xử lý Ảnh chung, chương, ghi chú và scope lạ", () => {
     expect(resolveScopeLabel(COMMON_SCOPE, CHAPTERS)).toEqual({ label: COMMON_SCOPE_LABEL });
     expect(resolveScopeLabel("ch_001", CHAPTERS)).toEqual({ label: "Ch 1 · Tàn tro", chapter: CHAPTERS[1] });
     expect(resolveScopeLabel("ch_note1", CHAPTERS)).toEqual({ label: "Outline Act 1", chapter: CHAPTERS[0] });

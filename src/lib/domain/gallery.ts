@@ -37,11 +37,6 @@ export interface ResolvedScope {
   chapter?: GalleryChapterRef;
 }
 
-/** Phạm vi gắn với một chương cụ thể (khác 'chung'). */
-export function isChapterScope(scope: string): boolean {
-  return !!scope && scope !== COMMON_SCOPE && scope.startsWith("ch_");
-}
-
 /** Sắp xếp ảnh mới nhất trước (giảm dần theo uploadedAt, hoà thì theo key). */
 export function sortAssetsNewestFirst<T extends Pick<GalleryAsset, "uploadedAt" | "key">>(assets: readonly T[]): T[] {
   return [...assets].sort((a, b) => {

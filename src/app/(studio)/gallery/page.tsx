@@ -11,7 +11,6 @@ import {
   countByKind,
   filterAssets,
   formatAssetSize,
-  isChapterScope,
   resolveScopeLabel,
   sortAssetsNewestFirst,
 } from "@/lib/domain/gallery";
@@ -26,8 +25,7 @@ export default function GalleryPage() {
   const qc = useQueryClient();
   const toast = useToast();
   const novelId = conn?.mode === "cloud" ? conn.novelId : null;
-  const viewer = !!novelId && cloudMe.data?.role !== undefined && cloudMe.data.role !== "editor";
-  const canEdit = !!novelId && !viewer;
+  const canEdit = cloudMe.data?.role === "editor";
 
   const project = useProject(!!novelId);
   const assetsQuery = useQuery({
@@ -44,6 +42,7 @@ export default function GalleryPage() {
   const chapters = useMemo(() => project.data?.chapters ?? [], [project.data?.chapters]);
   const sortedAssets = useMemo(() => sortAssetsNewestFirst(assetsQuery.data?.assets ?? []), [assetsQuery.data?.assets]);
   const chapterOptions = useMemo(() => buildChapterOptions(sortedAssets, chapters), [sortedAssets, chapters]);
+  const missingChapterOption = chapterFilter && !chapterOptions.some((opt) => opt.value === chapterFilter);
   const chapterScoped = useMemo(() => filterAssets(sortedAssets, { chapter: chapterFilter }), [sortedAssets, chapterFilter]);
   const kindCounts = useMemo(() => countByKind(chapterScoped, KINDS, kindFilter), [chapterScoped, kindFilter]);
   const filtered = useMemo(
@@ -71,14 +70,14 @@ export default function GalleryPage() {
   }, [activeIndex, filtered]);
 
   const handleDelete = async (a: Asset) => {
-    if (!novelId || !canEdit) return;
+    if (!novelId || !canEdit || deletingKey) return;
     if (!window.confirm(trashConfirmMessage(a))) return;
     setDeletingKey(a.key);
     try {
       await trashNovelAsset(novelId, a.key);
-      if (selectedKey === a.key) setSelectedKey(null);
+      setSelectedKey((key) => key === a.key ? null : key);
       toast("Đã chuyển ảnh vào thùng rác.");
-      await qc.invalidateQueries({ queryKey: ["assets"] });
+      await qc.invalidateQueries({ queryKey: ["assets", novelId] });
     } catch (e) {
       toast(`Không xoá được: ${e instanceof ApiError ? e.message : e}`, "error");
     } finally {
@@ -158,20 +157,24 @@ export default function GalleryPage() {
                   aria-label="Lọc theo chương"
                   data-testid="gallery-filter-chapter"
                 >
-                  <option value="">Tất cả</option>
+                  <option value="">Tất cả ({sortedAssets.length})</option>
+                  {missingChapterOption && (
+                    <option value={chapterFilter}>{resolveScopeLabel(chapterFilter, chapters).label} (0)</option>
+                  )}
                   {chapterOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
-                      {opt.count > 0 ? `${opt.label} (${opt.count})` : opt.label}
+                      {opt.label} ({opt.count})
                     </option>
                   ))}
                 </select>
-                <span className="small muted">{filtered.length} ảnh</span>
+                <span className="small muted" role="status">{filtered.length} ảnh</span>
               </div>
 
               <div className="row" style={{ gap: 4 }} data-testid="gallery-filter-kind">
                 <button
                   type="button"
                   className={`btn sm ${kindFilter === "" ? "" : "ghost"}`}
+                  aria-pressed={kindFilter === ""}
                   onClick={() => setKindFilter("")}
                 >
                   Tất cả ({chapterScoped.length})
@@ -181,6 +184,7 @@ export default function GalleryPage() {
                     type="button"
                     key={k.v}
                     className={`btn sm ${kindFilter === k.v ? "" : "ghost"}`}
+                    aria-pressed={kindFilter === k.v}
                     onClick={() => setKindFilter(k.v)}
                   >
                     {k.label} ({k.count})
@@ -218,6 +222,7 @@ export default function GalleryPage() {
                         className="gallery-thumb-btn"
                         onClick={() => setSelectedKey(a.key)}
                         aria-label={`Xem lớn: ${title}`}
+                        aria-haspopup="dialog"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element -- ảnh riêng tư từ R2, không qua tối ưu ảnh của Next */}
                         <img
@@ -243,7 +248,7 @@ export default function GalleryPage() {
                             <button
                               type="button"
                               className="btn sm ghost"
-                              disabled={deletingKey === a.key}
+                              disabled={deletingKey !== null}
                               onClick={() => void handleDelete(a)}
                             >
                               Bỏ vào thùng rác
@@ -294,14 +299,14 @@ export default function GalleryPage() {
                 <button
                   type="button"
                   className="btn danger"
-                  disabled={deletingKey === active.key}
+                  disabled={deletingKey !== null}
                   onClick={() => void handleDelete(active)}
                 >
                   Bỏ vào thùng rác
                 </button>
               )}
-              {isChapterScope(active.scope) && (
-                <Link className="btn" href={chapterHref(active.scope)}>
+              {activeScope.chapter && (
+                <Link className="btn" href={chapterHref(activeScope.chapter.id)}>
                   Mở chương
                 </Link>
               )}
