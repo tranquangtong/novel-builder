@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "reindex": "tsx scripts/reindex.ts",
+    "r2:assets": "node --experimental-strip-types scripts/r2-assets.mjs",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "engines": {

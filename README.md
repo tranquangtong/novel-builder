@@ -82,6 +82,19 @@ npx playwright test -c playwright.cloud.config.ts
 
 Next.js đóng `NEXT_PUBLIC_TARGET` vào mã trình duyệt lúc build. Cờ này bật chế độ đọc và hiển thị lỗi đăng nhập Cloudflare.
 
+### Quản lý ảnh trên R2 production
+
+Dùng Node.js 22.18+ và chạy `npx wrangler login` bằng tài khoản Cloudflare có quyền với bucket `novel-builder`. Lệnh mặc định in thao tác dự kiến và không kết nối Cloudflare. Thêm `--apply` để thực thi, kể cả khi liệt kê.
+
+```sh
+npm run r2:assets -- list --scope ch_abc123 --apply
+npm run r2:assets -- upload --scope ch_abc123 --kind sketch --actor tac-gia@example.com "Zen ở Đáy Sắt.png=Phác thảo Zen"
+npm run r2:assets -- upload --scope chung --kind illustration --actor tac-gia@example.com --caption-from-name "Bìa truyện.jpg" --apply
+npm run r2:assets -- trash --actor tac-gia@example.com ch_abc123/m0k-1234abcd-anh.png
+```
+
+Dùng `--novel ID` để chọn bộ truyện khác (mặc định `nv_bt8y37enbg`). `--caption-from-name` lấy tên tệp bỏ phần đuôi. Chú thích trong đối số `"đường dẫn=chú thích"` được ưu tiên cho riêng tệp đó. Dùng khóa tương đối từ kết quả `list` khi chuyển ảnh vào thùng rác. Khi ghi bằng `--apply`, JSON trả về các khóa R2 mới đã hoàn tất. Dùng `npm run --silent r2:assets -- …` nếu đọc kết quả bằng script.
+
 ### Kiến trúc (Cloudflare)
 
 ```
