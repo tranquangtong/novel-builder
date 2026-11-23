@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 /**
  * E2E chế độ Cloudflare: Worker chạy trên workerd (wrangler dev) với R2/D1 local.
- * Cần build trước KHÔNG có basePath: NEXT_PUBLIC_BASE_PATH= npm run build
+ * Cần build đúng target: NEXT_PUBLIC_TARGET=cloudflare NEXT_PUBLIC_BASE_PATH= npm run build
  * Access được bỏ qua bằng DEV_AUTH_EMAIL (chỉ có hiệu lực với host localhost).
  */
 const PORT = 8788;

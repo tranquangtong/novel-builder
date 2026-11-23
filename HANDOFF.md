@@ -35,13 +35,13 @@ Tính năng:
 | `npx playwright test -c playwright.cloud.config.ts` (cần build với `NEXT_PUBLIC_BASE_PATH=`) | ✅ 8/8 | ⚠️ 6/8. Test gallery **đạt**; 2 test hỏng là `cloud.spec.ts:258` (lỗi đăng nhập) và `:270` (chế độ đọc) |
 | `npm run test:e2e` (cần build với `NEXT_PUBLIC_BASE_PATH=/novel-builder`) | ✅ 29/29 | ⏸ chưa chạy xong (đã dừng giữa chừng) |
 
-Hai test cloud hỏng (`:258`, `:270`) **cũng hỏng y như vậy trên commit gốc `d49e5e9`**, trước khi thêm gallery. Vậy lỗi nằm ở môi trường máy Windows, không phải do thay đổi này.
+Hai test cloud hỏng (`:258`, `:270`) **cũng hỏng trên commit gốc `d49e5e9`**, trước khi thêm gallery. Lệnh build cũ thiếu `NEXT_PUBLIC_TARGET=cloudflare`, cờ bật chế độ đọc và hiển thị lỗi đăng nhập Cloudflare.
 
 ## Việc còn lại (trên MacBook)
 
 1. `git pull`, rồi `npm ci`, rồi `npx playwright install chromium`.
 2. Chạy `npm run check`.
-3. Chạy E2E cloud: `NEXT_PUBLIC_BASE_PATH= npm run build && npx playwright test -c playwright.cloud.config.ts`. Kỳ vọng 8/8.
+3. Chạy E2E cloud: `NEXT_PUBLIC_TARGET=cloudflare NEXT_PUBLIC_BASE_PATH= npm run build && npx playwright test -c playwright.cloud.config.ts`. Kỳ vọng 8/8. Xem [README](README.md#cho-người-phát-triển) nếu dùng PowerShell.
 4. Chạy E2E thường: `NEXT_PUBLIC_BASE_PATH=/novel-builder npm run build && npm run test:e2e`. Kỳ vọng 29/29.
 5. Nếu cả hai đạt, test tay trên `npm run dev` hoặc `npx wrangler dev`: mở menu "Thư viện ảnh", lọc ảnh, mở lightbox, kiểm tra người đọc không thấy nút xoá.
 6. Có thể nhờ Codex review chéo (read-only) bản diff `d49e5e9..f3757ca` trước khi deploy.
@@ -53,4 +53,3 @@ Hai test cloud hỏng (`:258`, `:270`) **cũng hỏng y như vậy trên commit 
 ## Lưu ý
 
 - **Cảnh báo bảo mật Next.js 16.4.2.** Lệnh `next build` báo phiên bản có lỗ hổng đã biết. Build dừng một lần để hiện khuyến nghị, chạy lại thì qua. Nó gợi ý `next upgrade --agent=security …`. Việc nâng phiên bản nằm ngoài task này và cần tác giả quyết. Theo `collab.md`, không tự đổi deps/lockfile.
-- Hai test cloud `:258` và `:270` hỏng trên Windows (kể cả ở commit gốc). Nếu trên Mac cũng hỏng thì giao Codex điều tra riêng.
