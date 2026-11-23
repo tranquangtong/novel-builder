@@ -1,7 +1,8 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import worker from "../../worker/index";
 import { FIREBASE_JWKS_URL, registerJwksForTests } from "../../worker/auth";
+import { SCOPE, assetKeyValid, assetKindValid, buildAssetMetadata, buildAssetRel, imageTypeFromFileName } from "../../worker/asset-storage.mjs";
 import { fakeEnv } from "../support/fake-cloudflare";
 
 const TEAM = "https://team.cloudflareaccess.com";
@@ -158,6 +159,40 @@ describe("Worker: bộ truyện, phân quyền, ghi đồng thời", () => {
 });
 
 describe("Worker: ảnh của chương", () => {
+  it("tạo khóa, mã hóa metadata và dùng chung quy tắc kiểm tra ảnh", () => {
+    const now = Date.UTC(2026, 9, 1);
+    const novel = "nv_bt8y37enbg";
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const uuid = vi.spyOn(crypto, "randomUUID").mockReturnValue("1234abcd-1234-4123-8123-123456abcdef");
+    try {
+      const rel = buildAssetRel("ch_abc123", "Đáy Sắt.JPEG", "jpg");
+      expect(rel).toBe(`ch_abc123/${now.toString(36)}-1234abcd-Day-Sat.jpg`);
+      expect(assetKeyValid(novel, rel)).toBe(`novels/${novel}/assets/${rel}`);
+      expect(assetKeyValid(novel, "../objects/m0k-1234abcd-anh.png")).toBeNull();
+    } finally {
+      clock.mockRestore();
+      uuid.mockRestore();
+    }
+
+    expect(SCOPE.test("chung")).toBe(true);
+    expect(SCOPE.test("ch_ab")).toBe(false);
+    expect(assetKindValid("illustration")).toBe(true);
+    expect(assetKindValid("cover")).toBe(false);
+    expect(imageTypeFromFileName("Đáy Sắt.JPEG")).toBe("image/jpeg");
+    expect(imageTypeFromFileName("ảnh.AVIF")).toBe("image/avif");
+    expect(imageTypeFromFileName("ảnh.png.svg")).toBeUndefined();
+
+    const at = new Date(now).toISOString();
+    expect(buildAssetMetadata("image/jpeg", "sketch", "é".repeat(501), "ảnh".repeat(200), at, "tac-gia@example.com")).toEqual({
+      httpMetadata: { contentType: "image/jpeg" },
+      customMetadata: {
+        kind: "sketch", caption: encodeURIComponent("é".repeat(500)),
+        fileName: encodeURIComponent("ảnh".repeat(200).slice(0, 500)),
+        uploadedAt: at, uploadedBy: "tac-gia@example.com",
+      },
+    });
+  });
+
   it("tải lên, liệt kê, tải về, chặn SVG/quá cỡ/người chỉ đọc, xoá vào thùng rác", async () => {
     const env = fakeEnv();
     const editor = await token({ email: "tac-gia@example.com" });
@@ -166,9 +201,21 @@ describe("Worker: ảnh của chương", () => {
     const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
     const up = await call(env, "POST", `/api/novels/${id}/assets?chapter=ch_abc123&kind=sketch&caption=${encodeURIComponent("Phác thảo Zen")}&name=${encodeURIComponent("Zen ở Đáy Sắt.png")}`, { jwt: editor, raw: png, type: "image/png" });
     expect(up.status).toBe(201);
-    const a = (await up.json()) as { key: string; caption: string };
-    expect(a.key).toMatch(/^ch_abc123\/[0-9a-z]+-[0-9a-z]+-Zen-o-Day-Sat\.png$/);
-    expect(a.caption).toBe("Phác thảo Zen");
+    const a = (await up.json()) as { key: string; uploadedAt: string };
+    expect(a.key).toMatch(/^ch_abc123\/[0-9a-z]+-[0-9a-f]{8}-Zen-o-Day-Sat\.png$/);
+    expect(a).toEqual({
+      key: a.key, scope: "ch_abc123", kind: "sketch", caption: "Phác thảo Zen", fileName: "Zen ở Đáy Sắt.png",
+      contentType: "image/png", size: png.byteLength, uploadedAt: expect.any(String), uploadedBy: "tac-gia@example.com",
+    });
+    expect(new Date(a.uploadedAt).toISOString()).toBe(a.uploadedAt);
+    const stored = env.BUCKET.objects.get(`novels/${id}/assets/${a.key}`);
+    const metadata = {
+      kind: "sketch", caption: encodeURIComponent("Phác thảo Zen"), fileName: encodeURIComponent("Zen ở Đáy Sắt.png"),
+      uploadedAt: a.uploadedAt, uploadedBy: "tac-gia@example.com",
+    };
+    expect(stored).toEqual({
+      data: png, httpMetadata: { contentType: "image/png" }, customMetadata: metadata, uploaded: expect.any(Date),
+    });
     const list = (await (await call(env, "GET", `/api/novels/${id}/assets?chapter=ch_abc123`, { jwt: editor })).json()) as { assets: { key: string; caption: string; kind: string }[] };
     expect(list.assets).toHaveLength(1);
     expect(list.assets[0]).toMatchObject({ caption: "Phác thảo Zen", kind: "sketch" });
@@ -183,7 +230,13 @@ describe("Worker: ảnh của chương", () => {
     expect((await call(env, "GET", `/api/novels/${id}/assets/file/..%2F..%2Fobjects%2Fx`, { jwt: reader })).status).toBe(404);
     expect((await call(env, "DELETE", `/api/novels/${id}/assets/file/${a.key}`, { jwt: editor })).status).toBe(200);
     expect(((await (await call(env, "GET", `/api/novels/${id}/assets?chapter=ch_abc123`, { jwt: editor })).json()) as { assets: unknown[] }).assets).toHaveLength(0);
-    expect([...env.BUCKET.objects.keys()].some((k) => k.startsWith(`novels/${id}/trash/ch_abc123/`))).toBe(true);
+    const trashed = env.BUCKET.objects.get(`novels/${id}/trash/${a.key}`);
+    expect(trashed).toEqual({
+      data: png, httpMetadata: { contentType: "image/png" }, uploaded: expect.any(Date),
+      customMetadata: { ...metadata, deletedAt: expect.any(String), deletedBy: "tac-gia@example.com" },
+    });
+    const deletedAt = trashed?.customMetadata?.deletedAt ?? "";
+    expect(new Date(deletedAt).toISOString()).toBe(deletedAt);
   });
 
   it("chặn request ghi từ trang khác (CSRF)", async () => {
