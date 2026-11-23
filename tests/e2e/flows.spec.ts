@@ -33,6 +33,77 @@ test.describe("Truy cập", () => {
   });
 });
 
+test.describe("Focus bàn phím trong hộp thoại", () => {
+  test("thư viện ảnh giữ focus khi mất liên kết chương và khi xoá ảnh", async ({ page }) => {
+    const novelId = "nv_gallery";
+    const api = `/api/novels/${novelId}`;
+    const common = { kind: "illustration", contentType: "image/png", size: 40, uploadedBy: "Tác giả" };
+    let assets = [
+      { ...common, key: "chapter.png", scope: "ch_gallery", caption: "Ảnh chương", fileName: "chapter.png", uploadedAt: "2026-11-02" },
+      { ...common, key: "cover.png", scope: "chung", caption: "Bìa chung", fileName: "cover.png", uploadedAt: "2026-11-01" },
+    ];
+    await page.addInitScript((id) => {
+      localStorage.setItem("nb-connection", JSON.stringify({ mode: "cloud", novelId: id, novelTitle: "Bộ thư viện ảnh" }));
+    }, novelId);
+    await page.route("**/api/me", (route) => route.fulfill({ json: { kind: "cloud", role: "editor", name: "Tác giả" } }));
+    await page.route(`**${api}/project`, (route) => route.fulfill({
+      json: {
+        repo: novelId,
+        project: { title: "Bộ thư viện ảnh" },
+        acts: [],
+        chapters: [{ id: "ch_gallery", title: "Chương có ảnh", number: 1 }],
+      },
+    }));
+    await page.route(`**${api}/proposals?state=open`, (route) => route.fulfill({ json: { pulls: [] } }));
+    await page.route(`**${api}/assets`, (route) => route.fulfill({ json: { assets } }));
+    await page.route(`**${api}/assets/file/*`, (route) => {
+      if (route.request().method() !== "DELETE") return route.fulfill({ status: 204 });
+      const key = new URL(route.request().url()).pathname.split("/").at(-1);
+      assets = assets.filter((asset) => asset.key !== key);
+      return route.fulfill({ json: { ok: true } });
+    });
+
+    await go(page, "/gallery/");
+    const thumbnail = page.getByRole("button", { name: "Xem lớn: Ảnh chương" });
+    const lightbox = page.getByTestId("gallery-lightbox");
+    const chapterLink = lightbox.getByRole("link", { name: "Mở chương" });
+    await thumbnail.press("Enter");
+    await expect(lightbox).toBeFocused();
+    await chapterLink.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(lightbox.getByRole("heading", { name: "Bìa chung" })).toBeVisible();
+    await expect(chapterLink).toHaveCount(0);
+    await expect(lightbox).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(lightbox.getByRole("button", { name: "Đóng" })).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(lightbox.getByRole("link", { name: "Mở ảnh gốc" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(thumbnail).toBeFocused();
+
+    await thumbnail.press("Enter");
+    page.once("dialog", (dialog) => dialog.accept());
+    await lightbox.getByRole("button", { name: "Bỏ vào thùng rác" }).press("Enter");
+    await expect(lightbox).toHaveCount(0);
+    await expect(thumbnail).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Xem lớn: Bìa chung" })).toBeFocused();
+  });
+
+  for (const title of ["Chương mới", "Act mới"]) {
+    test(`Escape trả focus về nút mở hộp thoại ${title}`, async ({ page }) => {
+      await useDemo(page);
+      await go(page, "/library/");
+      const opener = page.getByRole("button", { name: `+ ${title}`, exact: true }).first();
+      const dialog = page.getByRole("dialog", { name: title });
+      await opener.press("Enter");
+      await expect(dialog.getByRole("textbox")).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      await expect(opener).toBeFocused();
+    });
+  }
+});
+
 test.describe("Viết, nháp và lưu phiên bản", () => {
   test("gõ tiếng Việt, reload, khôi phục nháp; lưu phiên bản rồi reload không còn nháp", async ({ page }) => {
     await useDemo(page);
