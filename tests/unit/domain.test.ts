@@ -91,6 +91,7 @@ describe("AGENTS.md", () => {
   it("bản trong mã giống hệt templates/manuscript/AGENTS.md", async () => {
     const fs = await import("node:fs");
     const { AGENTS_MD } = await import("@/lib/domain/agents-md");
-    expect(AGENTS_MD).toBe(fs.readFileSync("templates/manuscript/AGENTS.md", "utf8"));
+    const template = fs.readFileSync("templates/manuscript/AGENTS.md", "utf8").replace(/\r\n/g, "\n");
+    expect(AGENTS_MD).toBe(template);
   });
 });

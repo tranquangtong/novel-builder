@@ -17,6 +17,7 @@ const CLOUD_NAV: NavItem[] = [
   { href: "/novels", label: "Bộ truyện", icon: "❖" },
   { href: "/", label: "Tổng quan", icon: "◎" },
   { href: "/library", label: "Thư viện Act & chương", icon: "▤" },
+  { href: "/gallery", label: "Thư viện ảnh", icon: "▦" },
   { href: "/proposals", label: "Đề xuất chỉnh sửa", icon: "⇄", count: true },
   { href: "/history", label: "Lịch sử & phục hồi", icon: "↺" },
   { href: "/read", label: "Chế độ đọc", icon: "❏" },

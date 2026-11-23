@@ -327,3 +327,115 @@ test("chế độ đọc: tác giả chuyển qua đọc; người đọc chỉ 
   expect(statuses).toEqual([403, 403, 403]);
   await ctx.close();
 });
+
+test("thư viện ảnh: lọc, xem và xoá ảnh theo quyền", async ({ page, browser }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await createNovel(page, "Bộ thư viện ảnh");
+  await page.goto("/library/");
+  await page.getByRole("button", { name: "+ Chương mới" }).click();
+  await page.getByRole("dialog").getByRole("textbox").fill("Chương có ảnh thư viện");
+  await page.getByRole("button", { name: "Tạo chương" }).click();
+  await expect(page.getByTestId("chapter-title")).toHaveValue("Chương có ảnh thư viện");
+
+  await page.getByTestId("goto-gallery").click();
+  await page.getByLabel("Loại ảnh").selectOption("character");
+  await page.getByPlaceholder("Chú thích (tuỳ chọn)").fill("Chân dung Zen");
+  await page.getByTestId("image-upload").setInputFiles({ name: "zen.png", mimeType: "image/png", buffer: png() });
+  await expect(page.getByTestId("image-list")).toContainText("Chân dung Zen");
+
+  await page.getByLabel("Loại ảnh").selectOption("scenery");
+  await page.getByPlaceholder("Chú thích (tuỳ chọn)").fill("Hẻm Đáy Sắt");
+  await page.getByTestId("image-upload").setInputFiles({ name: "day-sat.png", mimeType: "image/png", buffer: png() });
+  await expect(page.getByTestId("image-list")).toContainText("Hẻm Đáy Sắt");
+
+  // tải thêm 1 ảnh chung (không gắn chương) để kiểm lọc Ảnh chung
+  const novelId = await page.evaluate(() => JSON.parse(localStorage.getItem("nb-connection")!).novelId as string);
+  const pngBytes = Array.from(png());
+  const upCommon = await page.evaluate(
+    async ([nid, bytes]) => {
+      const qs = new URLSearchParams({ kind: "illustration", caption: "Bìa chung", name: "bia.png" });
+      const res = await fetch(`/api/novels/${nid}/assets?${qs}`, {
+        method: "POST",
+        body: new Uint8Array(bytes),
+        headers: { "Content-Type": "image/png" },
+        credentials: "same-origin",
+      });
+      return res.status;
+    },
+    [novelId, pngBytes] as const,
+  );
+  expect(upCommon).toBe(201);
+
+  // mở Thư viện ảnh từ menu điều hướng
+  await page.locator("nav.nav").getByRole("link", { name: "Thư viện ảnh" }).click();
+  await expect(page).toHaveURL(/\/gallery\/$/);
+  await expect(page.getByTestId("gallery-grid")).toBeVisible();
+  await expect(page.getByTestId("gallery-item")).toHaveCount(3);
+  await expect(page.getByTestId("gallery-grid")).toContainText("Chân dung Zen");
+  await expect(page.getByTestId("gallery-grid")).toContainText("Chương có ảnh thư viện");
+  await expect(page.getByTestId("gallery-grid")).toContainText("Ảnh chung");
+
+  // lọc theo loại ảnh
+  await page.getByTestId("gallery-filter-kind").getByRole("button", { name: "Nhân vật (1)" }).click();
+  await expect(page.getByTestId("gallery-item")).toHaveCount(1);
+  await expect(page.getByTestId("gallery-item").first()).toContainText("Chân dung Zen");
+  await page.getByTestId("gallery-filter-kind").getByRole("button", { name: /^Tất cả/ }).click();
+  await expect(page.getByTestId("gallery-item")).toHaveCount(3);
+
+  // lọc theo chương (Ảnh chung)
+  await page.getByTestId("gallery-filter-chapter").selectOption("chung");
+  await expect(page.getByTestId("gallery-item")).toHaveCount(1);
+  await expect(page.getByTestId("gallery-item").first()).toContainText("Bìa chung");
+  await page.getByTestId("gallery-filter-chapter").selectOption("");
+  await expect(page.getByTestId("gallery-item")).toHaveCount(3);
+
+  // mở lightbox từ ảnh thuộc chương
+  const thumbnail = page.getByRole("button", { name: "Xem lớn: Chân dung Zen" });
+  await thumbnail.focus();
+  await page.keyboard.press("Enter");
+  const lightbox = page.getByTestId("gallery-lightbox");
+  await expect(lightbox).toBeVisible();
+  await expect(lightbox).toContainText("Chân dung Zen");
+  await expect(lightbox).toContainText("Chương có ảnh thư viện");
+  await expect(lightbox.getByRole("link", { name: "Mở chương" })).toBeVisible();
+  await expect(lightbox.getByRole("link", { name: "Mở ảnh gốc" })).toHaveAttribute("target", "_blank");
+  await expect.poll(() => lightbox.locator("img").evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(2);
+  await expect(lightbox).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(lightbox.getByRole("link", { name: "Mở ảnh gốc" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(lightbox.getByRole("button", { name: "Đóng" })).toBeFocused();
+
+  const original = (await lightbox.getByRole("link", { name: "Mở ảnh gốc" }).getAttribute("href"))!;
+  await page.keyboard.press("Escape");
+  await expect(lightbox).toHaveCount(0);
+  await expect(thumbnail).toBeFocused();
+
+  const reader = await browser.newContext({ extraHTTPHeaders: { "x-dev-auth-email": "ban-doc@gmail.com" } });
+  try {
+    const readerPage = await reader.newPage();
+    await readerPage.goto("/gallery/");
+    await expect(readerPage).toHaveURL(/\/read\/$/);
+    await expect(readerPage.getByRole("button", { name: "Bỏ vào thùng rác" })).toHaveCount(0);
+    expect((await reader.request.get(`/api/novels/${novelId}/assets`)).status()).toBe(403);
+    expect((await reader.request.delete(original)).status()).toBe(403);
+  } finally {
+    await reader.close();
+  }
+
+  await thumbnail.click();
+  const openChapter = lightbox.getByRole("link", { name: "Mở chương" });
+  const chapterPath = (await openChapter.getAttribute("href"))!;
+  const deleteResponse = page.waitForResponse((r) => r.url().endsWith(original) && r.request().method() === "DELETE");
+  page.once("dialog", (dialog) => dialog.accept());
+  await lightbox.getByRole("button", { name: "Bỏ vào thùng rác" }).click();
+  expect((await deleteResponse).status()).toBe(200);
+  await expect(lightbox).toHaveCount(0);
+  await expect(page.getByTestId("gallery-item")).toHaveCount(2);
+  await page.goBack();
+  await expect(page).toHaveURL((url) => url.pathname + url.search === chapterPath);
+  await expect(page.getByTestId("image-list")).toContainText("Hẻm Đáy Sắt");
+  await expect(page.getByTestId("image-list")).not.toContainText("Chân dung Zen");
+  expect(errors).toEqual([]);
+});
