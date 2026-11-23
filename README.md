@@ -61,8 +61,26 @@ Bản thảo "The Last Miracle" nằm trên Cloudflare; **không còn repo bản
 | `npm start` | Phục vụ `out/` như GitHub Pages (`scripts/serve-static.mjs`) |
 | `npm run lint` / `npm run typecheck` / `npm test` | ESLint / TypeScript / Vitest |
 | `npm run test:e2e` | Playwright trên bản xuất tĩnh: chế độ demo và chế độ GitHub với API giả |
-| `npx playwright test -c playwright.cloud.config.ts` | Playwright trên Worker thật (workerd, `wrangler dev`) với R2/D1 local. Cần build trước với `NEXT_PUBLIC_BASE_PATH=` |
+| `npx playwright test -c playwright.cloud.config.ts` | Playwright trên Worker thật (workerd, `wrangler dev`) với R2/D1 local. Cần build Cloudflare trước theo hướng dẫn bên dưới. |
 | `npx wrangler dev` | Chạy Worker local; tạo `.dev.vars` với `DEV_AUTH_EMAIL=...` và `EDITOR_EMAILS=...` (chỉ có hiệu lực với localhost) |
+
+Build cho E2E Cloudflare trên macOS/Linux:
+
+```sh
+NEXT_PUBLIC_TARGET=cloudflare NEXT_PUBLIC_BASE_PATH= npm run build
+npx playwright test -c playwright.cloud.config.ts
+```
+
+Trên Windows PowerShell:
+
+```powershell
+$env:NEXT_PUBLIC_TARGET = 'cloudflare'
+$env:NEXT_PUBLIC_BASE_PATH = ''
+npm run build
+npx playwright test -c playwright.cloud.config.ts
+```
+
+Next.js đóng `NEXT_PUBLIC_TARGET` vào mã trình duyệt lúc build. Cờ này bật chế độ đọc và hiển thị lỗi đăng nhập Cloudflare.
 
 ### Kiến trúc (Cloudflare)
 
