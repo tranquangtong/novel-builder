@@ -1,12 +1,13 @@
 "use client";
 import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, cloudFetch, fmtDate } from "@/lib/client/api";
+import type { GalleryAsset } from "@/lib/domain/gallery";
 import { assetUrl } from "./Markdown";
 import { IMAGE_DRAG_TYPE } from "./MarkdownEditor";
 import { useToast } from "./Toast";
 
-type Asset = { key: string; kind: string; caption: string; fileName: string; size: number; uploadedAt: string; uploadedBy: string };
+export type Asset = GalleryAsset;
 
 export const KINDS = [
   { v: "character", label: "Nhân vật" },
@@ -17,14 +18,22 @@ export const KINDS = [
   { v: "reference", label: "Tham khảo" },
   { v: "other", label: "Khác" },
 ];
-const kindLabel = (k: string) => KINDS.find((x) => x.v === k)?.label ?? k;
+export const kindLabel = (k: string) => KINDS.find((x) => x.v === k)?.label ?? k;
 const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif";
+
+export const trashConfirmMessage = (a: { caption: string; fileName: string }) =>
+  `Bỏ ảnh “${a.caption || a.fileName}” vào thùng rác?\n\nẢnh được chuyển sang thùng rác trên R2, không mất hẳn. Nếu chương đang chèn ảnh này, chỗ đó sẽ không hiện ảnh nữa.`;
+
+export async function trashNovelAsset(novelId: string, key: string) {
+  await cloudFetch(`/api/novels/${novelId}/assets/file/${key.split("/").map(encodeURIComponent).join("/")}`, "DELETE");
+}
 
 /** Ảnh đi kèm một chương (chỉ ở chế độ Cloudflare). */
 export const imageMarkdown = (a: { caption: string; fileName: string; key: string }) => `![${(a.caption || a.fileName).replace(/[[\]]/g, "")}](asset:${a.key})`;
 
 export function ChapterImages({ novelId, chapterId, canEdit, onInsert, insertHint }: { novelId: string; chapterId: string; canEdit: boolean; onInsert: (markdown: string) => void; insertHint?: React.ReactNode }) {
   const toast = useToast();
+  const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const [kind, setKind] = useState("character");
   const [filter, setFilter] = useState("");
@@ -49,7 +58,7 @@ export function ChapterImages({ novelId, chapterId, canEdit, onInsert, insertHin
       }
       toast(`Đã tải lên ${files.length} ảnh.`);
       setCaption("");
-      void q.refetch();
+      void qc.invalidateQueries({ queryKey: ["assets", novelId] });
     } catch (e) {
       toast(`Tải ảnh thất bại: ${e instanceof Error ? e.message : e}`, "error");
     } finally {
@@ -59,10 +68,10 @@ export function ChapterImages({ novelId, chapterId, canEdit, onInsert, insertHin
   };
 
   const trash = async (a: Asset) => {
-    if (!window.confirm(`Bỏ ảnh “${a.caption || a.fileName}” vào thùng rác?\n\nẢnh được chuyển sang thùng rác trên R2, không mất hẳn. Nếu chương đang chèn ảnh này, chỗ đó sẽ không hiện ảnh nữa.`)) return;
+    if (!window.confirm(trashConfirmMessage(a))) return;
     try {
-      await cloudFetch(`/api/novels/${novelId}/assets/file/${a.key.split("/").map(encodeURIComponent).join("/")}`, "DELETE");
-      void q.refetch();
+      await trashNovelAsset(novelId, a.key);
+      void qc.invalidateQueries({ queryKey: ["assets", novelId] });
     } catch (e) {
       toast(`Không xoá được: ${e instanceof ApiError ? e.message : e}`, "error");
     }

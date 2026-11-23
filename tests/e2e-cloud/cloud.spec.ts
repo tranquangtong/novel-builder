@@ -327,3 +327,80 @@ test("chế độ đọc: tác giả chuyển qua đọc; người đọc chỉ 
   expect(statuses).toEqual([403, 403, 403]);
   await ctx.close();
 });
+
+test("thư viện ảnh: xem tất cả ảnh của bộ truyện, lọc theo loại/chương và mở lightbox", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await createNovel(page, "Bộ thư viện ảnh");
+  await page.goto("/library/");
+  await page.getByRole("button", { name: "+ Chương mới" }).click();
+  await page.getByRole("dialog").getByRole("textbox").fill("Chương có ảnh thư viện");
+  await page.getByRole("button", { name: "Tạo chương" }).click();
+  await expect(page.getByTestId("chapter-title")).toHaveValue("Chương có ảnh thư viện");
+
+  await page.getByTestId("goto-gallery").click();
+  await page.getByLabel("Loại ảnh").selectOption("character");
+  await page.getByPlaceholder("Chú thích (tuỳ chọn)").fill("Chân dung Zen");
+  await page.getByTestId("image-upload").setInputFiles({ name: "zen.png", mimeType: "image/png", buffer: png() });
+  await expect(page.getByTestId("image-list")).toContainText("Chân dung Zen");
+
+  await page.getByLabel("Loại ảnh").selectOption("scenery");
+  await page.getByPlaceholder("Chú thích (tuỳ chọn)").fill("Hẻm Đáy Sắt");
+  await page.getByTestId("image-upload").setInputFiles({ name: "day-sat.png", mimeType: "image/png", buffer: png() });
+  await expect(page.getByTestId("image-list")).toContainText("Hẻm Đáy Sắt");
+
+  // tải thêm 1 ảnh chung (không gắn chương) để kiểm lọc Ảnh chung
+  const novelId = await page.evaluate(() => JSON.parse(localStorage.getItem("nb-connection")!).novelId as string);
+  const pngBytes = Array.from(png());
+  const upCommon = await page.evaluate(
+    async ([nid, bytes]) => {
+      const qs = new URLSearchParams({ kind: "illustration", caption: "Bìa chung", name: "bia.png" });
+      const res = await fetch(`/api/novels/${nid}/assets?${qs}`, {
+        method: "POST",
+        body: new Uint8Array(bytes),
+        headers: { "Content-Type": "image/png" },
+        credentials: "same-origin",
+      });
+      return res.status;
+    },
+    [novelId, pngBytes] as const,
+  );
+  expect(upCommon).toBe(201);
+
+  // mở Thư viện ảnh từ menu điều hướng
+  await page.locator("nav.nav").getByRole("link", { name: "Thư viện ảnh" }).click();
+  await expect(page).toHaveURL(/\/gallery\/$/);
+  await expect(page.getByTestId("gallery-grid")).toBeVisible();
+  await expect(page.getByTestId("gallery-item")).toHaveCount(3);
+  await expect(page.getByTestId("gallery-grid")).toContainText("Chân dung Zen");
+  await expect(page.getByTestId("gallery-grid")).toContainText("Chương có ảnh thư viện");
+  await expect(page.getByTestId("gallery-grid")).toContainText("Ảnh chung");
+
+  // lọc theo loại ảnh
+  await page.getByTestId("gallery-filter-kind").getByRole("button", { name: "Nhân vật (1)" }).click();
+  await expect(page.getByTestId("gallery-item")).toHaveCount(1);
+  await expect(page.getByTestId("gallery-item").first()).toContainText("Chân dung Zen");
+  await page.getByTestId("gallery-filter-kind").getByRole("button", { name: /^Tất cả/ }).click();
+  await expect(page.getByTestId("gallery-item")).toHaveCount(3);
+
+  // lọc theo chương (Ảnh chung)
+  await page.getByTestId("gallery-filter-chapter").selectOption("chung");
+  await expect(page.getByTestId("gallery-item")).toHaveCount(1);
+  await expect(page.getByTestId("gallery-item").first()).toContainText("Bìa chung");
+  await page.getByTestId("gallery-filter-chapter").selectOption("");
+  await expect(page.getByTestId("gallery-item")).toHaveCount(3);
+
+  // mở lightbox từ ảnh thuộc chương
+  await page.getByTestId("gallery-item").filter({ hasText: "Chân dung Zen" }).locator("img").click();
+  const lightbox = page.getByTestId("gallery-lightbox");
+  await expect(lightbox).toBeVisible();
+  await expect(lightbox).toContainText("Chân dung Zen");
+  await expect(lightbox).toContainText("Chương có ảnh thư viện");
+  await expect(lightbox.getByRole("link", { name: "Mở chương" })).toBeVisible();
+  await expect(lightbox.getByRole("link", { name: "Mở ảnh gốc" })).toHaveAttribute("target", "_blank");
+  await expect.poll(() => lightbox.locator("img").evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(2);
+
+  await page.keyboard.press("Escape");
+  await expect(lightbox).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
